@@ -2,13 +2,17 @@
 {% block title %}Plantillas SMS{% endblock %}
 {% block content %}
 <a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
-<p style="color:#6b7280;">Completa los datos y descarga el PDF. Luego lo adjuntas o envías el enlace por SMS al paciente.</p>
+<h2>📄 Plantillas de Documentos</h2>
+<p style="color:#6b7280;">
+  Cartas formales con membrete de la clínica, listas para descargar en PDF y adjuntar o enviar por SMS.
+  Completa los datos y descarga.
+</p>
 
 <div class="card">
   <h2>💵 Aviso de pago</h2>
   <form class="form-grid" method="POST" action="{{ url_for('plantilla_pago') }}">
     <div>
-      <label>Paciente (opcional)</label>
+      <label>Paciente</label>
       <select name="paciente">
         <option value="">-- Sin especificar --</option>
         {% for c in clientes %}
@@ -17,7 +21,7 @@
       </select>
     </div>
     <div>
-      <label>Monto (opcional)</label>
+      <label>Monto adeudado</label>
       <input type="text" name="monto" placeholder="ej. 180.00">
     </div>
     <div>
@@ -54,6 +58,79 @@
         <option value="{{ t.nombre }}">{{ t.nombre }}</option>
         {% endfor %}
       </select>
+    </div>
+    <div>
+      <button type="submit">Descargar PDF</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>🧾 Recibo de pago</h2>
+  <p style="color:#6b7280;font-size:0.85rem;">Para confirmar por escrito un pago que el paciente ya realizó.</p>
+  <form class="form-grid" method="POST" action="{{ url_for('plantilla_recibo') }}">
+    <div>
+      <label>Paciente</label>
+      <select name="paciente">
+        <option value="">-- Sin especificar --</option>
+        {% for c in clientes %}
+        <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Concepto</label>
+      <input type="text" name="concepto" placeholder="ej. Consulta inicial">
+    </div>
+    <div>
+      <label>Monto pagado</label>
+      <input type="text" name="monto" placeholder="ej. 150.00">
+    </div>
+    <div>
+      <label>Método de pago</label>
+      <select name="metodo">
+        <option value="">-- Sin especificar --</option>
+        <option value="Cash">Cash</option>
+        <option value="Zelle">Zelle</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+        <option value="Card">Card</option>
+        <option value="Check">Check</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label>Fecha de pago</label>
+      <input type="date" name="fecha">
+    </div>
+    <div>
+      <button type="submit">Descargar PDF</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>✍️ Carta personalizada (plantilla libre)</h2>
+  <p style="color:#6b7280;font-size:0.85rem;">
+    Escribe cualquier asunto y mensaje — se genera con el mismo membrete formal de la clínica.
+    Úsala para crear el tipo de comunicado que necesites, sin depender de una plantilla fija.
+  </p>
+  <form class="form-grid" method="POST" action="{{ url_for('plantilla_carta') }}">
+    <div>
+      <label>Paciente (opcional)</label>
+      <select name="paciente">
+        <option value="">-- Sin especificar --</option>
+        {% for c in clientes %}
+        <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Asunto / Título de la carta *</label>
+      <input type="text" name="asunto" required placeholder="ej. Recordatorio de laboratorio">
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <label>Cuerpo del mensaje *</label>
+      <textarea name="cuerpo" rows="5" required placeholder="Escribe aquí el contenido completo de la carta..."></textarea>
     </div>
     <div>
       <button type="submit">Descargar PDF</button>

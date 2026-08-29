@@ -81,12 +81,21 @@ def clientes():
             # numero_record NUNCA se toca aquí: una vez asignado, es permanente
             conn.execute("UPDATE clientes SET nombre=?, telefono=?, email=?, direccion=? WHERE id_cliente=?",
                          data + (edit_id,))
+            id_cliente_actual = int(edit_id)
         else:
             siguiente = conn.execute(
                 "SELECT COALESCE(MAX(numero_record), 0) + 1 AS n FROM clientes"
             ).fetchone()["n"]
-            conn.execute("INSERT INTO clientes (numero_record, nombre, telefono, email, direccion) VALUES (?,?,?,?,?)",
-                         (siguiente,) + data)
+            cur = conn.execute(
+                "INSERT INTO clientes (numero_record, nombre, telefono, email, direccion) VALUES (?,?,?,?,?)",
+                (siguiente,) + data)
+            id_cliente_actual = cur.lastrowid
+
+        # Archivos subidos junto con el formulario (labs, identificación, etc.) -> quedan en el expediente
+        for archivo in request.files.getlist("documentos"):
+            if archivo and archivo.filename:
+                _guardar_documento_cliente(conn, id_cliente_actual, archivo)
+
         conn.commit()
         return redirect(url_for("clientes"))
     edit_row = None
@@ -111,6 +120,20 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
+def _guardar_documento_cliente(conn, id_cliente, archivo):
+    """Guarda un FileStorage en disco y registra la fila en documentos_clientes.
+    Se usa tanto desde 'Nuevo cliente' como desde la pantalla de Documentos del expediente."""
+    from werkzeug.utils import secure_filename
+    nombre_seguro = secure_filename(archivo.filename)
+    carpeta_cliente = os.path.join(UPLOAD_FOLDER, str(id_cliente))
+    os.makedirs(carpeta_cliente, exist_ok=True)
+    ruta_disco = os.path.join(carpeta_cliente, nombre_seguro)
+    archivo.save(ruta_disco)
+    ruta_relativa = f"{id_cliente}/{nombre_seguro}"
+    conn.execute("""INSERT INTO documentos_clientes (id_cliente, nombre_archivo, ruta_archivo)
+                     VALUES (?,?,?)""", (id_cliente, archivo.filename, ruta_relativa))
+
+
 @app.route("/clientes/<int:id_cliente>/documentos", methods=["GET", "POST"])
 def documentos_cliente(id_cliente):
     conn = get_connection()
@@ -120,18 +143,10 @@ def documentos_cliente(id_cliente):
         return redirect(url_for("clientes"))
 
     if request.method == "POST":
-        archivo = request.files.get("archivo")
-        if archivo and archivo.filename:
-            from werkzeug.utils import secure_filename
-            nombre_seguro = secure_filename(archivo.filename)
-            carpeta_cliente = os.path.join(UPLOAD_FOLDER, str(id_cliente))
-            os.makedirs(carpeta_cliente, exist_ok=True)
-            ruta_disco = os.path.join(carpeta_cliente, nombre_seguro)
-            archivo.save(ruta_disco)
-            ruta_relativa = f"{id_cliente}/{nombre_seguro}"
-            conn.execute("""INSERT INTO documentos_clientes (id_cliente, nombre_archivo, ruta_archivo)
-                             VALUES (?,?,?)""", (id_cliente, archivo.filename, ruta_relativa))
-            conn.commit()
+        for archivo in request.files.getlist("archivo"):
+            if archivo and archivo.filename:
+                _guardar_documento_cliente(conn, id_cliente, archivo)
+        conn.commit()
         conn.close()
         return redirect(url_for("documentos_cliente", id_cliente=id_cliente))
 
@@ -521,6 +536,31 @@ def plantilla_promocion():
     buf = plantillas.generar_promocion(titulo=request.form.get("titulo", "WEIGHT LOSS PROGRAM"))
     return send_file(buf, mimetype="application/pdf", as_attachment=True,
                       download_name="promocion.pdf")
+
+
+@app.route("/plantillas/recibo", methods=["POST"])
+def plantilla_recibo():
+    buf = plantillas.generar_recibo_pago(
+        paciente=request.form.get("paciente", ""),
+        concepto=request.form.get("concepto", ""),
+        monto=request.form.get("monto", ""),
+        metodo=request.form.get("metodo", ""),
+        fecha=request.form.get("fecha", ""),
+    )
+    return send_file(buf, mimetype="application/pdf", as_attachment=True,
+                      download_name="recibo_de_pago.pdf")
+
+
+@app.route("/plantillas/carta", methods=["POST"])
+def plantilla_carta():
+    buf = plantillas.generar_carta_personalizada(
+        asunto=request.form.get("asunto", "Comunicado"),
+        cuerpo=request.form.get("cuerpo", ""),
+        paciente=request.form.get("paciente", ""),
+    )
+    nombre_archivo = (request.form.get("asunto") or "carta").strip().lower().replace(" ", "_")
+    return send_file(buf, mimetype="application/pdf", as_attachment=True,
+                      download_name=f"{nombre_archivo}.pdf")
 
 
 # ---------- COMPRAS A PROVEEDORES ----------
