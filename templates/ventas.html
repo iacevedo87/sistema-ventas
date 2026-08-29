@@ -25,6 +25,25 @@
           {% endfor %}
         </select>
       </div>
+      <div>
+        <label>Estado de pago</label>
+        <select name="estado_pago">
+          <option value="Paid">Paid</option>
+          <option value="Partial">Partial</option>
+          <option value="Pending">Pending</option>
+        </select>
+      </div>
+      <div>
+        <label>Método de pago</label>
+        <select name="metodo_pago">
+          <option value="">-- Sin especificar --</option>
+          <option value="Cash">Cash</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="Card">Card</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
     </div>
 
     <label>Productos</label>
@@ -40,7 +59,7 @@
   <h2>Historial de ventas</h2>
   <table>
     <thead>
-      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Acciones</th></tr>
+      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Estado</th><th>Método</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for v in ventas %}
@@ -57,6 +76,11 @@
           </ul>
         </td>
         <td>${{ '%.2f'|format(v.total) }}</td>
+        <td>
+          {% set colores = {'Paid': '#1f6b2b', 'Partial': '#b45309', 'Pending': '#dc2626'} %}
+          <span class="badge" style="background:transparent;border:1px solid {{ colores.get(v.estado_pago, '#6b7280') }};color:{{ colores.get(v.estado_pago, '#6b7280') }};">{{ v.estado_pago or 'Paid' }}</span>
+        </td>
+        <td>{{ v.metodo_pago or '-' }}</td>
         <td class="actions">
           <form method="POST" action="{{ url_for('delete_venta', id_venta=v.id_venta) }}"
                 onsubmit="return confirm('¿Eliminar esta venta?');">
@@ -65,7 +89,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" style="color:#6b7280;">No hay ventas registradas.</td></tr>
+      <tr><td colspan="9" style="color:#6b7280;">No hay ventas registradas.</td></tr>
       {% endfor %}
     </tbody>
   </table>

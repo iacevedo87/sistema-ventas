@@ -11,16 +11,32 @@
       <input type="text" name="nombre" required value="{{ edit_row.nombre if edit_row else '' }}">
     </div>
     <div>
+      <label>Categoría</label>
+      <select name="categoria">
+        {% for cat in categorias %}
+        <option value="{{ cat }}" {% if edit_row and edit_row.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
       <label>Descripción</label>
       <input type="text" name="descripcion" value="{{ edit_row.descripcion if edit_row else '' }}">
     </div>
     <div>
-      <label>Precio *</label>
+      <label>Precio de venta *</label>
       <input type="number" step="0.01" min="0" name="precio" required value="{{ edit_row.precio if edit_row else '0' }}">
     </div>
     <div>
+      <label>Costo unitario (referencia)</label>
+      <input type="number" step="0.01" min="0" name="costo_unitario" value="{{ edit_row.costo_unitario if edit_row else '0' }}">
+    </div>
+    <div>
+      <label>Volumen por vial/paquete (ml)</label>
+      <input type="number" step="0.01" min="0" name="volumen_ml" value="{{ edit_row.volumen_ml if edit_row and edit_row.volumen_ml else '' }}">
+    </div>
+    <div>
       <label>Stock *</label>
-      <input type="number" min="0" name="stock" required value="{{ edit_row.stock if edit_row else '0' }}">
+      <input type="number" step="0.01" min="0" name="stock" required value="{{ edit_row.stock if edit_row else '0' }}">
     </div>
     <div>
       <label>Proveedor</label>
@@ -42,15 +58,24 @@
   <h2>Listado de productos</h2>
   <table>
     <thead>
-      <tr><th>#</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Proveedor</th><th>Acciones</th></tr>
+      <tr>
+        <th>#</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Costo</th>
+        <th>Margen $</th><th>Margen %</th><th>Vol. (ml)</th><th>Stock</th><th>Proveedor</th><th>Acciones</th>
+      </tr>
     </thead>
     <tbody>
       {% for r in rows %}
+      {% set margen_dolar = r.precio - r.costo_unitario %}
+      {% set margen_pct = ((margen_dolar / r.precio) * 100) if r.precio else 0 %}
       <tr>
         <td>{{ r.id_producto }}</td>
         <td>{{ r.nombre }}</td>
-        <td>{{ r.descripcion or '-' }}</td>
+        <td><span class="badge">{{ r.categoria or '-' }}</span></td>
         <td>${{ '%.2f'|format(r.precio) }}</td>
+        <td>${{ '%.2f'|format(r.costo_unitario or 0) }}</td>
+        <td style="color: {{ '#1f6b2b' if margen_dolar >= 0 else '#dc2626' }};">${{ '%.2f'|format(margen_dolar) }}</td>
+        <td style="color: {{ '#1f6b2b' if margen_pct >= 0 else '#dc2626' }};">{{ '%.1f'|format(margen_pct) }}%</td>
+        <td>{{ r.volumen_ml or '-' }}</td>
         <td>{{ r.stock }}</td>
         <td>{{ r.proveedor_nombre or '-' }}</td>
         <td class="actions">
@@ -62,7 +87,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" style="color:#6b7280;">No hay productos registrados.</td></tr>
+      <tr><td colspan="11" style="color:#6b7280;">No hay productos registrados.</td></tr>
       {% endfor %}
     </tbody>
   </table>

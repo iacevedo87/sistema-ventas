@@ -34,6 +34,16 @@
     <span class="label">Ventas</span>
     <span class="count">{{ stats.ventas }} registradas</span>
   </a>
+  <a class="dash-btn" href="{{ url_for('compras') }}">
+    <span class="icon">🛒</span>
+    <span class="label">Compras a Proveedores</span>
+    <span class="count">{{ stats.compras }} registradas</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('inventario') }}">
+    <span class="icon">📦</span>
+    <span class="label">Inventario</span>
+    <span class="count">Stock actual</span>
+  </a>
   <a class="dash-btn" href="{{ url_for('nomina') }}">
     <span class="icon">🧾</span>
     <span class="label">Pago de Nómina</span>
@@ -43,6 +53,11 @@
     <span class="icon">📄</span>
     <span class="label">Plantillas SMS</span>
     <span class="count">Descargables en PDF</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reportes') }}">
+    <span class="icon">📊</span>
+    <span class="label">Reportes</span>
+    <span class="count">Ventas y ganancia neta</span>
   </a>
 </div>
 {% endblock %}

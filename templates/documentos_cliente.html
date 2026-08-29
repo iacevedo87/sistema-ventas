@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Documentos de {{ cliente.nombre }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('clientes') }}">&larr; Volver a Clientes</a>
+
+<div class="card">
+  <h2>📎 Expediente de {{ cliente.nombre }}</h2>
+  <p style="color:#6b7280;font-size:0.85rem;">
+    Sube resultados de laboratorio, consentimientos firmados, identificación u otros documentos del paciente.
+  </p>
+  <form method="POST" action="{{ url_for('documentos_cliente', id_cliente=cliente.id_cliente) }}" enctype="multipart/form-data" class="form-grid">
+    <div>
+      <label>Archivo</label>
+      <input type="file" name="archivo" required>
+    </div>
+    <div>
+      <button type="submit">Subir archivo</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Documentos subidos</h2>
+  <table>
+    <thead>
+      <tr><th>Archivo</th><th>Fecha</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for d in documentos %}
+      <tr>
+        <td>{{ d.nombre_archivo }}</td>
+        <td>{{ d.fecha_subida }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('descargar_documento', id_documento=d.id_documento) }}">Descargar</a>
+          <form method="POST" action="{{ url_for('eliminar_documento', id_documento=d.id_documento) }}"
+                onsubmit="return confirm('¿Eliminar este documento?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" style="color:#6b7280;">No hay documentos subidos todavía.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

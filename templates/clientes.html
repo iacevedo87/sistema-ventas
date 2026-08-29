@@ -46,6 +46,7 @@
         <td>{{ r.fecha_registro }}</td>
         <td class="actions">
           <a class="btn" href="{{ url_for('clientes', edit=r.id_cliente) }}">Editar</a>
+          <a class="btn btn-secondary" href="{{ url_for('documentos_cliente', id_cliente=r.id_cliente) }}">📎 Documentos</a>
           <form method="POST" action="{{ url_for('delete_cliente', id_cliente=r.id_cliente) }}"
                 onsubmit="return confirm('¿Eliminar este cliente?');">
             <button type="submit" class="btn-danger">Eliminar</button>
