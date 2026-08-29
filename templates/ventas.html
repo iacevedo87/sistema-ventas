@@ -65,11 +65,31 @@
     </div>
 
     <label>Productos</label>
+    <div id="productos-header" style="display:none;">
+      <div class="venta-row venta-row-header">
+        <span>Producto</span><span>Cantidad</span><span>Precio unit.</span><span></span>
+      </div>
+    </div>
     <div id="productos-container"></div>
     <button type="button" class="btn btn-secondary" onclick="agregarFila()">+ Agregar producto</button>
 
-    <p style="margin-top:14px;font-weight:600;">Total estimado: $<span id="total-estimado">0.00</span></p>
-    <button type="submit">Registrar venta</button>
+    <div class="resumen-cards" style="margin-top:16px;max-width:420px;margin-left:auto;">
+      <div class="stat">
+        <div class="label">Subtotal</div>
+        <div class="value">$<span id="subtotal-estimado">0.00</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Descuento (%)</div>
+        <input type="number" name="descuento_porcentaje" id="input-descuento" min="0" max="100" step="0.1"
+               value="0" oninput="calcularTotal()" style="font-size:1.1rem;font-weight:700;border:none;padding:0;">
+      </div>
+      <div class="stat" style="background:var(--primary);border-color:var(--primary);">
+        <div class="label" style="color:#c8e6a0;">Total final</div>
+        <div class="value" style="color:white;">$<span id="total-estimado">0.00</span></div>
+      </div>
+    </div>
+
+    <button type="submit" style="margin-top:14px;">Registrar venta</button>
   </form>
 </div>
 
@@ -77,7 +97,7 @@
   <h2>Historial de ventas</h2>
   <table>
     <thead>
-      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Estado</th><th>Método</th><th>Observaciones</th><th>Acciones</th></tr>
+      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Subtotal</th><th>Desc. %</th><th>Total</th><th>Estado</th><th>Método</th><th>Observaciones</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for v in ventas %}
@@ -93,7 +113,9 @@
             {% endfor %}
           </ul>
         </td>
-        <td>${{ '%.2f'|format(v.total) }}</td>
+        <td>${{ '%.2f'|format(v.subtotal or v.total) }}</td>
+        <td>{{ '%.1f'|format(v.descuento_porcentaje or 0) }}%</td>
+        <td><strong>${{ '%.2f'|format(v.total) }}</strong></td>
         <td>
           {% set colores = {'Paid': '#1f6b2b', 'Partial': '#b45309', 'Pending': '#dc2626'} %}
           <span class="badge" style="background:transparent;border:1px solid {{ colores.get(v.estado_pago, '#6b7280') }};color:{{ colores.get(v.estado_pago, '#6b7280') }};">{{ v.estado_pago or 'Paid' }}</span>
@@ -108,7 +130,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="10" style="color:#6b7280;">No hay ventas registradas.</td></tr>
+      <tr><td colspan="12" style="color:#6b7280;">No hay ventas registradas.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -122,32 +144,43 @@ const productos = [
 ];
 
 function agregarFila() {
+  document.getElementById('productos-header').style.display = 'block';
   const container = document.getElementById('productos-container');
   const row = document.createElement('div');
   row.className = 'venta-row';
 
   let options = '<option value="">-- Selecciona producto --</option>';
   productos.forEach(p => {
-    options += `<option value="${p.id}" data-precio="${p.precio}">${p.nombre} ($${p.precio.toFixed(2)}) - stock: ${p.stock}</option>`;
+    options += `<option value="${p.id}" data-precio="${p.precio}">${p.nombre} (stock: ${p.stock})</option>`;
   });
 
   row.innerHTML = `
-    <select name="id_producto[]" onchange="calcularTotal()">${options}</select>
+    <select name="id_producto[]" onchange="precargarPrecio(this); calcularTotal();">${options}</select>
     <input type="number" name="cantidad[]" min="1" value="1" onchange="calcularTotal()" oninput="calcularTotal()">
+    <input type="number" name="precio_unitario[]" min="0" step="0.01" value="0" onchange="calcularTotal()" oninput="calcularTotal()"
+           title="Precio ajustable — puedes cambiarlo si esta venta lleva un precio distinto al de catálogo">
     <button type="button" class="remove-row" onclick="this.parentElement.remove(); calcularTotal();">✕</button>
   `;
   container.appendChild(row);
 }
 
+function precargarPrecio(select) {
+  const row = select.closest('.venta-row');
+  const opt = select.options[select.selectedIndex];
+  const precio = opt ? parseFloat(opt.getAttribute('data-precio')) || 0 : 0;
+  row.querySelector('input[name="precio_unitario[]"]').value = precio.toFixed(2);
+}
+
 function calcularTotal() {
-  let total = 0;
+  let subtotal = 0;
   document.querySelectorAll('#productos-container .venta-row').forEach(row => {
-    const select = row.querySelector('select');
-    const cantidad = parseFloat(row.querySelector('input').value) || 0;
-    const opt = select.options[select.selectedIndex];
-    const precio = opt ? parseFloat(opt.getAttribute('data-precio')) || 0 : 0;
-    total += precio * cantidad;
+    const cantidad = parseFloat(row.querySelector('input[name="cantidad[]"]').value) || 0;
+    const precio = parseFloat(row.querySelector('input[name="precio_unitario[]"]').value) || 0;
+    subtotal += precio * cantidad;
   });
+  const descuentoPct = Math.max(0, Math.min(100, parseFloat(document.getElementById('input-descuento').value) || 0));
+  const total = subtotal - (subtotal * descuentoPct / 100);
+  document.getElementById('subtotal-estimado').textContent = subtotal.toFixed(2);
   document.getElementById('total-estimado').textContent = total.toFixed(2);
 }
 
