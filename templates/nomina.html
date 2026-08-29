@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Pago de Nómina{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<div class="card">
+  <h2>{{ 'Editar pago' if edit_row else 'Nuevo pago de nómina' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('nomina') }}">
+    {% if edit_row %}<input type="hidden" name="id_nomina" value="{{ edit_row.id_nomina }}">{% endif %}
+    <div>
+      <label>Trabajador *</label>
+      <select name="id_trabajador" required>
+        <option value="">-- Selecciona --</option>
+        {% for t in trabajadores %}
+        <option value="{{ t.id_trabajador }}" {% if edit_row and edit_row.id_trabajador == t.id_trabajador %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Periodo (ej. 2026-08 Quincena 2)</label>
+      <input type="text" name="periodo" value="{{ edit_row.periodo if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Salario bruto *</label>
+      <input type="number" step="0.01" min="0" name="salario_bruto" required value="{{ edit_row.salario_bruto if edit_row else '0' }}">
+    </div>
+    <div>
+      <label>Deducciones</label>
+      <input type="number" step="0.01" min="0" name="deducciones" value="{{ edit_row.deducciones if edit_row else '0' }}">
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('nomina') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Historial de pagos</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Trabajador</th><th>Fecha de pago</th><th>Periodo</th><th>Bruto</th><th>Deducciones</th><th>Neto</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id_nomina }}</td>
+        <td>{{ r.trabajador_nombre }}</td>
+        <td>{{ r.fecha_pago }}</td>
+        <td>{{ r.periodo or '-' }}</td>
+        <td>${{ '%.2f'|format(r.salario_bruto) }}</td>
+        <td>${{ '%.2f'|format(r.deducciones) }}</td>
+        <td><strong>${{ '%.2f'|format(r.salario_neto) }}</strong></td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('nomina', edit=r.id_nomina) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_nomina', id_nomina=r.id_nomina) }}"
+                onsubmit="return confirm('¿Eliminar este pago?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="color:#6b7280;">No hay pagos registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

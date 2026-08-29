@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Trabajadores{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<div class="card">
+  <h2>{{ 'Editar trabajador' if edit_row else 'Nuevo trabajador' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('trabajadores') }}">
+    {% if edit_row %}<input type="hidden" name="id_trabajador" value="{{ edit_row.id_trabajador }}">{% endif %}
+    <div>
+      <label>Nombre *</label>
+      <input type="text" name="nombre" required value="{{ edit_row.nombre if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Puesto</label>
+      <input type="text" name="puesto" value="{{ edit_row.puesto if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Teléfono</label>
+      <input type="text" name="telefono" value="{{ edit_row.telefono if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Email</label>
+      <input type="email" name="email" value="{{ edit_row.email if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Fecha de contratación</label>
+      <input type="date" name="fecha_contratacion" value="{{ edit_row.fecha_contratacion if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Salario</label>
+      <input type="number" step="0.01" min="0" name="salario" value="{{ edit_row.salario if edit_row else '0' }}">
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('trabajadores') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Listado de trabajadores</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Nombre</th><th>Puesto</th><th>Teléfono</th><th>Email</th><th>Contratación</th><th>Salario</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id_trabajador }}</td>
+        <td>{{ r.nombre }}</td>
+        <td>{{ r.puesto or '-' }}</td>
+        <td>{{ r.telefono or '-' }}</td>
+        <td>{{ r.email or '-' }}</td>
+        <td>{{ r.fecha_contratacion or '-' }}</td>
+        <td>${{ '%.2f'|format(r.salario) }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('trabajadores', edit=r.id_trabajador) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_trabajador', id_trabajador=r.id_trabajador) }}"
+                onsubmit="return confirm('¿Eliminar este trabajador?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="color:#6b7280;">No hay trabajadores registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

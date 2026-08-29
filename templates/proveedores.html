@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Proveedores{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<div class="card">
+  <h2>{{ 'Editar proveedor' if edit_row else 'Nuevo proveedor' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('proveedores') }}">
+    {% if edit_row %}<input type="hidden" name="id_proveedor" value="{{ edit_row.id_proveedor }}">{% endif %}
+    <div>
+      <label>Nombre *</label>
+      <input type="text" name="nombre" required value="{{ edit_row.nombre if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Contacto</label>
+      <input type="text" name="contacto" value="{{ edit_row.contacto if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Teléfono</label>
+      <input type="text" name="telefono" value="{{ edit_row.telefono if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Email</label>
+      <input type="email" name="email" value="{{ edit_row.email if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Dirección</label>
+      <input type="text" name="direccion" value="{{ edit_row.direccion if edit_row else '' }}">
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('proveedores') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Listado de proveedores</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id_proveedor }}</td>
+        <td>{{ r.nombre }}</td>
+        <td>{{ r.contacto or '-' }}</td>
+        <td>{{ r.telefono or '-' }}</td>
+        <td>{{ r.email or '-' }}</td>
+        <td>{{ r.direccion or '-' }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('proveedores', edit=r.id_proveedor) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_proveedor', id_proveedor=r.id_proveedor) }}"
+                onsubmit="return confirm('¿Eliminar este proveedor?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="color:#6b7280;">No hay proveedores registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

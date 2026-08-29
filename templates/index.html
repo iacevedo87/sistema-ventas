@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Inicio - Sistema de Ventas{% endblock %}
+{% block content %}
+<h2>Panel principal</h2>
+<p style="color:#6b7280;">Selecciona un módulo para gestionar los datos de la compañía.</p>
+<div class="dashboard-grid">
+  <a class="dash-btn" href="{{ url_for('clientes') }}">
+    <span class="icon">👤</span>
+    <span class="label">Clientes</span>
+    <span class="count">{{ stats.clientes }} registrados</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('proveedores') }}">
+    <span class="icon">🚚</span>
+    <span class="label">Proveedores</span>
+    <span class="count">{{ stats.proveedores }} registrados</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('productos') }}">
+    <span class="icon">📦</span>
+    <span class="label">Productos</span>
+    <span class="count">{{ stats.productos }} registrados</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('trabajadores') }}">
+    <span class="icon">🧑‍💼</span>
+    <span class="label">Trabajadores</span>
+    <span class="count">{{ stats.trabajadores }} registrados</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('usuarios') }}">
+    <span class="icon">🔑</span>
+    <span class="label">Usuarios</span>
+    <span class="count">{{ stats.usuarios }} registrados</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('ventas') }}">
+    <span class="icon">💵</span>
+    <span class="label">Ventas</span>
+    <span class="count">{{ stats.ventas }} registradas</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('nomina') }}">
+    <span class="icon">🧾</span>
+    <span class="label">Pago de Nómina</span>
+    <span class="count">{{ stats.nomina }} pagos</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('plantillas_home') }}">
+    <span class="icon">📄</span>
+    <span class="label">Plantillas SMS</span>
+    <span class="count">Descargables en PDF</span>
+  </a>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Productos{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<div class="card">
+  <h2>{{ 'Editar producto' if edit_row else 'Nuevo producto' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('productos') }}">
+    {% if edit_row %}<input type="hidden" name="id_producto" value="{{ edit_row.id_producto }}">{% endif %}
+    <div>
+      <label>Nombre *</label>
+      <input type="text" name="nombre" required value="{{ edit_row.nombre if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Descripción</label>
+      <input type="text" name="descripcion" value="{{ edit_row.descripcion if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Precio *</label>
+      <input type="number" step="0.01" min="0" name="precio" required value="{{ edit_row.precio if edit_row else '0' }}">
+    </div>
+    <div>
+      <label>Stock *</label>
+      <input type="number" min="0" name="stock" required value="{{ edit_row.stock if edit_row else '0' }}">
+    </div>
+    <div>
+      <label>Proveedor</label>
+      <select name="id_proveedor">
+        <option value="">-- Ninguno --</option>
+        {% for p in proveedores %}
+        <option value="{{ p.id_proveedor }}" {% if edit_row and edit_row.id_proveedor == p.id_proveedor %}selected{% endif %}>{{ p.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('productos') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Listado de productos</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Stock</th><th>Proveedor</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id_producto }}</td>
+        <td>{{ r.nombre }}</td>
+        <td>{{ r.descripcion or '-' }}</td>
+        <td>${{ '%.2f'|format(r.precio) }}</td>
+        <td>{{ r.stock }}</td>
+        <td>{{ r.proveedor_nombre or '-' }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('productos', edit=r.id_producto) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_producto', id_producto=r.id_producto) }}"
+                onsubmit="return confirm('¿Eliminar este producto?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="color:#6b7280;">No hay productos registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

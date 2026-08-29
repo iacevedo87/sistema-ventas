@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<div class="card">
+  <h2>{{ 'Editar usuario' if edit_row else 'Nuevo usuario' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('usuarios') }}">
+    {% if edit_row %}<input type="hidden" name="id_usuario" value="{{ edit_row.id_usuario }}">{% endif %}
+    <div>
+      <label>Usuario *</label>
+      <input type="text" name="username" required value="{{ edit_row.username if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Contraseña {{ '(dejar en blanco para no cambiar)' if edit_row else '*' }}</label>
+      <input type="password" name="password" {{ 'required' if not edit_row else '' }}>
+    </div>
+    <div>
+      <label>Rol</label>
+      <select name="rol">
+        {% set current_rol = edit_row.rol if edit_row else 'empleado' %}
+        <option value="admin" {% if current_rol == 'admin' %}selected{% endif %}>Administrador</option>
+        <option value="vendedor" {% if current_rol == 'vendedor' %}selected{% endif %}>Vendedor</option>
+        <option value="empleado" {% if current_rol == 'empleado' %}selected{% endif %}>Empleado</option>
+      </select>
+    </div>
+    <div>
+      <label>Trabajador vinculado</label>
+      <select name="id_trabajador">
+        <option value="">-- Ninguno --</option>
+        {% for t in trabajadores %}
+        <option value="{{ t.id_trabajador }}" {% if edit_row and edit_row.id_trabajador == t.id_trabajador %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('usuarios') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Listado de usuarios</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Usuario</th><th>Rol</th><th>Trabajador</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id_usuario }}</td>
+        <td>{{ r.username }}</td>
+        <td><span class="badge">{{ r.rol }}</span></td>
+        <td>{{ r.trabajador_nombre or '-' }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('usuarios', edit=r.id_usuario) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_usuario', id_usuario=r.id_usuario) }}"
+                onsubmit="return confirm('¿Eliminar este usuario?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="color:#6b7280;">No hay usuarios registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

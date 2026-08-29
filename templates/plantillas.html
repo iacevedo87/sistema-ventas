@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Plantillas SMS{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<p style="color:#6b7280;">Completa los datos y descarga el PDF. Luego lo adjuntas o envías el enlace por SMS al paciente.</p>
+
+<div class="card">
+  <h2>💵 Aviso de pago</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('plantilla_pago') }}">
+    <div>
+      <label>Paciente (opcional)</label>
+      <select name="paciente">
+        <option value="">-- Sin especificar --</option>
+        {% for c in clientes %}
+        <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Monto (opcional)</label>
+      <input type="text" name="monto" placeholder="ej. 180.00">
+    </div>
+    <div>
+      <button type="submit">Descargar PDF</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>📅 Confirmación de cita</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('plantilla_cita') }}">
+    <div>
+      <label>Paciente</label>
+      <select name="paciente">
+        <option value="">-- Sin especificar --</option>
+        {% for c in clientes %}
+        <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Fecha</label>
+      <input type="date" name="fecha">
+    </div>
+    <div>
+      <label>Hora</label>
+      <input type="time" name="hora">
+    </div>
+    <div>
+      <label>Proveedor</label>
+      <select name="proveedor">
+        <option value="">-- Sin especificar --</option>
+        {% for t in trabajadores %}
+        <option value="{{ t.nombre }}">{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <button type="submit">Descargar PDF</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>⭐ Promoción / Flyer</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('plantilla_promocion') }}">
+    <div>
+      <label>Título de la promoción</label>
+      <input type="text" name="titulo" value="WEIGHT LOSS PROGRAM">
+    </div>
+    <div>
+      <button type="submit">Descargar PDF</button>
+    </div>
+  </form>
+  <p style="color:#6b7280;font-size:0.85rem;margin-top:10px;">
+    Usa los precios y servicios actuales del Weight Loss Program. Si quieres que sea totalmente editable
+    (otros servicios/precios), dímelo y lo ajusto.
+  </p>
+</div>
+{% endblock %}

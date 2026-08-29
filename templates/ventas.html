@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+
+<div class="card">
+  <h2>Nueva venta</h2>
+  <form method="POST" action="{{ url_for('ventas') }}" id="venta-form">
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div>
+        <label>Cliente</label>
+        <select name="id_cliente">
+          <option value="">-- Sin cliente --</option>
+          {% for c in clientes %}
+          <option value="{{ c.id_cliente }}">{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Vendedor (trabajador)</label>
+        <select name="id_trabajador">
+          <option value="">-- Sin asignar --</option>
+          {% for t in trabajadores %}
+          <option value="{{ t.id_trabajador }}">{{ t.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label>Productos</label>
+    <div id="productos-container"></div>
+    <button type="button" class="btn btn-secondary" onclick="agregarFila()">+ Agregar producto</button>
+
+    <p style="margin-top:14px;font-weight:600;">Total estimado: $<span id="total-estimado">0.00</span></p>
+    <button type="submit">Registrar venta</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Historial de ventas</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for v in ventas %}
+      <tr>
+        <td>{{ v.id_venta }}</td>
+        <td>{{ v.fecha }}</td>
+        <td>{{ v.cliente_nombre or '-' }}</td>
+        <td>{{ v.trabajador_nombre or '-' }}</td>
+        <td>
+          <ul class="detalle-list">
+            {% for d in detalles[v.id_venta] %}
+            <li>{{ d.producto_nombre }} x{{ d.cantidad }} (${{ '%.2f'|format(d.precio_unitario) }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+        <td>${{ '%.2f'|format(v.total) }}</td>
+        <td class="actions">
+          <form method="POST" action="{{ url_for('delete_venta', id_venta=v.id_venta) }}"
+                onsubmit="return confirm('¿Eliminar esta venta?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="color:#6b7280;">No hay ventas registradas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const productos = [
+  {% for p in productos %}
+  { id: {{ p.id_producto }}, nombre: {{ p.nombre|tojson }}, precio: {{ p.precio }}, stock: {{ p.stock }} },
+  {% endfor %}
+];
+
+function agregarFila() {
+  const container = document.getElementById('productos-container');
+  const row = document.createElement('div');
+  row.className = 'venta-row';
+
+  let options = '<option value="">-- Selecciona producto --</option>';
+  productos.forEach(p => {
+    options += `<option value="${p.id}" data-precio="${p.precio}">${p.nombre} ($${p.precio.toFixed(2)}) - stock: ${p.stock}</option>`;
+  });
+
+  row.innerHTML = `
+    <select name="id_producto[]" onchange="calcularTotal()">${options}</select>
+    <input type="number" name="cantidad[]" min="1" value="1" onchange="calcularTotal()" oninput="calcularTotal()">
+    <button type="button" class="remove-row" onclick="this.parentElement.remove(); calcularTotal();">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function calcularTotal() {
+  let total = 0;
+  document.querySelectorAll('#productos-container .venta-row').forEach(row => {
+    const select = row.querySelector('select');
+    const cantidad = parseFloat(row.querySelector('input').value) || 0;
+    const opt = select.options[select.selectedIndex];
+    const precio = opt ? parseFloat(opt.getAttribute('data-precio')) || 0 : 0;
+    total += precio * cantidad;
+  });
+  document.getElementById('total-estimado').textContent = total.toFixed(2);
+}
+
+// arrancar con una fila
+agregarFila();
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+SISTEMA DE VENTAS — INSTRUCCIONES
+==================================
+
+QUÉ ES ESTO
+-----------
+No es un archivo .mdb (Access no es viable de generar en este entorno),
+sino una base de datos SQLite (ventas.db) + una aplicación web (Flask)
+que la alimenta con pantallas interactivas y botones, tal como pediste.
+
+TABLAS Y RELACIONES
+--------------------
+- proveedores
+- productos          -> id_proveedor (FK a proveedores)
+- clientes
+- trabajadores
+- usuarios           -> id_trabajador (FK a trabajadores)
+- ventas             -> id_cliente (FK a clientes), id_trabajador (FK a trabajadores)
+- detalle_ventas     -> id_venta (FK a ventas), id_producto (FK a productos)
+                        [tabla intermedia: una venta puede tener varios productos]
+- nomina             -> id_trabajador (FK a trabajadores)
+
+Al registrar una venta, el stock del producto se descuenta automáticamente.
+
+CÓMO EJECUTARLO
+----------------
+1. Necesitas Python 3 instalado.
+2. Abre una terminal en esta carpeta y ejecuta:
+
+   pip install flask
+   python app.py
+
+3. Abre tu navegador en:  http://localhost:5000
+
+   (Si lo corres en otra máquina/servidor, cambia localhost por su IP,
+   y asegúrate de que el puerto 5000 esté abierto.)
+
+4. Desde el panel principal, usa los botones para entrar a cada módulo
+   (Clientes, Proveedores, Productos, Trabajadores, Usuarios, Ventas, Nómina).
+   Cada pantalla tiene su formulario para agregar/editar y su tabla para
+   ver, editar o eliminar registros.
+
+ARCHIVOS
+--------
+- app.py            -> lógica de la aplicación (rutas y CRUD)
+- database.py       -> creación del esquema (tablas y relaciones)
+- ventas.db         -> la base de datos SQLite (se crea sola al arrancar)
+- templates/        -> las pantallas HTML
+- static/style.css  -> estilos visuales
+
+Si en algún momento quieres migrar esto a un servidor en línea (para que
+varias personas lo usen desde internet), este mismo código funciona con
+mínimos cambios en servicios como Render, Railway o un VPS.

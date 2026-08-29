@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión - Sistema de Ventas</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <div class="card" style="width:100%;max-width:340px;text-align:center;">
+    <img src="{{ url_for('static', filename='branding/logo.png') }}" alt="Integrated Healthcare Services" style="max-width:220px;margin-bottom:10px;">
+    <h2 style="margin-top:0;font-size:1.1rem;color:var(--primary);">Sistema de Gestión</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <p style="color:#dc2626;font-size:0.9rem;text-align:center;">{{ messages[0] }}</p>
+      {% endif %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('login') }}">
+      <label>Usuario</label>
+      <input type="text" name="username" required autofocus style="margin-bottom:12px;">
+      <label>Contraseña</label>
+      <input type="password" name="password" required style="margin-bottom:16px;">
+      <button type="submit" style="width:100%;">Entrar</button>
+    </form>
+  </div>
+</body>
+</html>
