@@ -34,9 +34,9 @@
   </main>
   <script>
     // Auto-salida por inactividad: si no hay clics, teclas ni movimiento del mouse
-    // durante 30 segundos, cierra la sesión automáticamente.
+    // durante 5 minutos, cierra la sesión automáticamente.
     (function () {
-     const LIMITE_MS = 300000; // 5 minutos
+      const LIMITE_MS = 5 * 60 * 1000; // 5 minutos
       let temporizador;
       function cerrarPorInactividad() {
         window.location.href = "{{ url_for('logout') }}";

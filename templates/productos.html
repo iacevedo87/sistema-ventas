@@ -18,12 +18,13 @@
           <option value="{{ cat }}" {% if (edit_row and edit_row.categoria == cat) or (not edit_row and nueva_cat == cat) %}selected{% endif %}>{{ cat }}</option>
           {% endfor %}
         </select>
-        <button type="button" class="btn btn-secondary" onclick="document.getElementById('form-nueva-cat').style.display='flex'; this.style.display='none';">+ Nueva</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('bloque-nueva-cat').style.display='flex'; this.style.display='none';">+ Nueva</button>
       </div>
-      <form id="form-nueva-cat" method="POST" action="{{ url_for('agregar_categoria') }}" style="display:none;gap:6px;margin-top:6px;">
-        <input type="text" name="nueva_categoria" placeholder="Nombre de la categoría" style="flex:1;" required>
-        <button type="submit" class="btn">Agregar</button>
-      </form>
+      <div id="bloque-nueva-cat" style="display:none;gap:6px;margin-top:6px;">
+        <input type="text" id="input-nueva-cat" placeholder="Nombre de la categoría" style="flex:1;">
+        <button type="button" class="btn" onclick="agregarCategoriaAjax()">Agregar</button>
+      </div>
+      <small id="msg-nueva-cat" style="color:#dc2626;display:none;"></small>
     </div>
     <div>
       <label>Descripción</label>
@@ -109,4 +110,45 @@
     </tbody>
   </table>
 </div>
+
+<script>
+function agregarCategoriaAjax() {
+  const input = document.getElementById('input-nueva-cat');
+  const msg = document.getElementById('msg-nueva-cat');
+  const nombre = input.value.trim();
+  msg.style.display = 'none';
+  if (!nombre) {
+    msg.textContent = 'Escribe un nombre de categoría.';
+    msg.style.display = 'block';
+    return;
+  }
+  const datos = new FormData();
+  datos.append('nueva_categoria', nombre);
+
+  fetch("{{ url_for('agregar_categoria_ajax') }}", { method: 'POST', body: datos })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        msg.textContent = data.error || 'No se pudo agregar la categoría.';
+        msg.style.display = 'block';
+        return;
+      }
+      const select = document.getElementById('select-categoria');
+      const yaExiste = Array.from(select.options).some(o => o.value === data.nombre);
+      if (!yaExiste) {
+        const opcion = document.createElement('option');
+        opcion.value = data.nombre;
+        opcion.textContent = data.nombre;
+        select.appendChild(opcion);
+      }
+      select.value = data.nombre;
+      input.value = '';
+      document.getElementById('bloque-nueva-cat').style.display = 'none';
+    })
+    .catch(() => {
+      msg.textContent = 'Error de conexión. Intenta de nuevo.';
+      msg.style.display = 'block';
+    });
+}
+</script>
 {% endblock %}

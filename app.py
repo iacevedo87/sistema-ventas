@@ -232,6 +232,21 @@ def agregar_categoria():
     return redirect(url_for("productos", nueva_cat=nombre))
 
 
+@app.route("/categorias/agregar-ajax", methods=["POST"])
+def agregar_categoria_ajax():
+    """Igual que /categorias/agregar pero responde en JSON, sin recargar la página
+    (así no se pierden los demás campos que ya llenaste en el formulario de producto)."""
+    from flask import jsonify
+    nombre = (request.form.get("nueva_categoria") or "").strip().upper()
+    if not nombre:
+        return jsonify({"ok": False, "error": "Escribe un nombre de categoría."}), 400
+    conn = get_connection()
+    conn.execute("INSERT OR IGNORE INTO categorias (nombre) VALUES (?)", (nombre,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "nombre": nombre})
+
+
 # ---------- PROVEEDORES ----------
 @app.route("/proveedores", methods=["GET", "POST"])
 def proveedores():
