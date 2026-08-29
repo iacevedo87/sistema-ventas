@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+
+<div class="card">
+  <h2>📊 Ventas y ganancia neta por mes</h2>
+  <p style="color:#6b7280;font-size:0.88rem;">
+    La ganancia neta se calcula restando a las ventas del mes la nómina <strong>pagada y registrada</strong>
+    en ese mismo mes (pantalla de Nómina). Si pagaste salarios pero no los registraste ahí, regístralos
+    para que se reflejen aquí.
+  </p>
+  <p style="color:#6b7280;font-size:0.88rem;">
+    Nómina fija mensual actual (suma de salarios de todos los trabajadores registrados):
+    <strong style="color:var(--primary);">${{ '%.2f'|format(nomina_fija_mensual) }}</strong>
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Mes</th><th>Ventas totales</th><th>Nómina pagada</th><th>Ganancia neta</th></tr>
+    </thead>
+    <tbody>
+      {% for m in meses %}
+      <tr>
+        <td>{{ m.mes }}</td>
+        <td>${{ '%.2f'|format(m.ventas) }}</td>
+        <td>${{ '%.2f'|format(m.nomina_pagada) }}</td>
+        <td>
+          <strong style="color: {{ '#1f6b2b' if m.ganancia >= 0 else '#dc2626' }};">
+            ${{ '%.2f'|format(m.ganancia) }}
+          </strong>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="color:#6b7280;">Todavía no hay ventas ni pagos de nómina registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
