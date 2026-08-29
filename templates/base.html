@@ -21,6 +21,7 @@
       <a href="{{ url_for('usuarios') }}">Usuarios</a>
       <a href="{{ url_for('ventas') }}">Ventas</a>
       <a href="{{ url_for('compras') }}">Compras</a>
+      <a href="{{ url_for('tarjetas') }}">Tarjetas</a>
       <a href="{{ url_for('inventario') }}">Inventario</a>
       <a href="{{ url_for('nomina') }}">Nómina</a>
       <a href="{{ url_for('plantillas_home') }}">Plantillas SMS</a>
@@ -31,5 +32,24 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <script>
+    // Auto-salida por inactividad: si no hay clics, teclas ni movimiento del mouse
+    // durante 30 segundos, cierra la sesión automáticamente.
+    (function () {
+      const LIMITE_MS = 30000;
+      let temporizador;
+      function cerrarPorInactividad() {
+        window.location.href = "{{ url_for('logout') }}";
+      }
+      function reiniciarTemporizador() {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(cerrarPorInactividad, LIMITE_MS);
+      }
+      ["mousemove", "mousedown", "keydown", "scroll", "touchstart", "click"].forEach(function (evento) {
+        document.addEventListener(evento, reiniciarTemporizador, { passive: true });
+      });
+      reiniciarTemporizador();
+    })();
+  </script>
 </body>
 </html>

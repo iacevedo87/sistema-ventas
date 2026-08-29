@@ -56,7 +56,13 @@
     </div>
     <div>
       <label>Tarjeta usada</label>
-      <input type="text" name="tarjeta_usada" placeholder="ej. Card 1, Card 2">
+      <select name="tarjeta_usada">
+        <option value="">-- Sin especificar --</option>
+        {% for t in tarjetas %}
+        <option value="{{ t.nombre }}">{{ t.nombre }}{% if t.ultimos4 %} (**** {{ t.ultimos4 }}){% endif %}</option>
+        {% endfor %}
+      </select>
+      <small style="color:#6b7280;">¿No aparece tu tarjeta? <a href="{{ url_for('tarjetas') }}">Regístrala aquí</a>.</small>
     </div>
     <div>
       <label>Estado de pago</label>

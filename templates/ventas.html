@@ -35,6 +35,10 @@
           <option value="Paid">Paid</option>
           <option value="Partial">Partial</option>
           <option value="Pending">Pending</option>
+          <option value="Overdue">Overdue</option>
+          <option value="Refunded">Refunded</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Insurance Pending">Insurance Pending</option>
         </select>
       </div>
       <div>
@@ -45,8 +49,18 @@
           <option value="Zelle">Zelle</option>
           <option value="Bank Transfer">Bank Transfer</option>
           <option value="Card">Card</option>
+          <option value="Check">Check</option>
+          <option value="PayPal">PayPal</option>
+          <option value="Venmo">Venmo</option>
+          <option value="CashApp">CashApp</option>
+          <option value="Insurance">Insurance</option>
+          <option value="Financing">Financing</option>
           <option value="Other">Other</option>
         </select>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>Observaciones</label>
+        <textarea name="observaciones" rows="2" placeholder="Cualquier dato adicional sobre esta venta..."></textarea>
       </div>
     </div>
 
@@ -63,7 +77,7 @@
   <h2>Historial de ventas</h2>
   <table>
     <thead>
-      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Estado</th><th>Método</th><th>Acciones</th></tr>
+      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Total</th><th>Estado</th><th>Método</th><th>Observaciones</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for v in ventas %}
@@ -85,6 +99,7 @@
           <span class="badge" style="background:transparent;border:1px solid {{ colores.get(v.estado_pago, '#6b7280') }};color:{{ colores.get(v.estado_pago, '#6b7280') }};">{{ v.estado_pago or 'Paid' }}</span>
         </td>
         <td>{{ v.metodo_pago or '-' }}</td>
+        <td>{{ v.observaciones or '-' }}</td>
         <td class="actions">
           <form method="POST" action="{{ url_for('delete_venta', id_venta=v.id_venta) }}"
                 onsubmit="return confirm('¿Eliminar esta venta?');">
@@ -93,7 +108,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="9" style="color:#6b7280;">No hay ventas registradas.</td></tr>
+      <tr><td colspan="10" style="color:#6b7280;">No hay ventas registradas.</td></tr>
       {% endfor %}
     </tbody>
   </table>

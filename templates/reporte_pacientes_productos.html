@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Pacientes x Productos{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('reportes') }}">&larr; Volver a Reportes</a>
+
+<div class="card">
+  <h2>🧑‍⚕️ Pacientes x Productos comprados</h2>
+  <form class="filtros-reporte" method="GET" action="{{ url_for('reporte_pacientes_productos') }}">
+    <div>
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde or '' }}">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta or '' }}">
+    </div>
+    <div>
+      <label>Paciente</label>
+      <select name="id_cliente">
+        <option value="">-- Todos --</option>
+        {% for c in clientes %}
+        <option value="{{ c.id_cliente }}" {% if id_cliente_filtro == c.id_cliente|string %}selected{% endif %}>{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Filtrar</button></div>
+    <div><a class="btn btn-secondary" href="{{ url_for('reporte_pacientes_productos') }}">Limpiar</a></div>
+  </form>
+
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Récord #</th><th>Paciente</th><th>Producto</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.fecha }}</td>
+        <td>{{ ('#' + r.numero_record|string) if r.numero_record else '-' }}</td>
+        <td>{{ r.cliente_nombre or 'Sin cliente' }}</td>
+        <td>{{ r.producto_nombre }}</td>
+        <td>{{ r.cantidad }}</td>
+        <td>${{ '%.2f'|format(r.precio_unitario) }}</td>
+        <td>${{ '%.2f'|format(r.subtotal) }}</td>
+        <td>{{ r.estado_pago }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="color:#6b7280;">No hay resultados para este filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

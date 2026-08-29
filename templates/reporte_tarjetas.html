@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Transacciones por Tarjeta{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('reportes') }}">&larr; Volver a Reportes</a>
+
+<div class="card">
+  <h2>💳 Transacciones por tarjeta</h2>
+  <form class="filtros-reporte" method="GET" action="{{ url_for('reporte_tarjetas') }}">
+    <div>
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde or '' }}">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta or '' }}">
+    </div>
+    <div>
+      <label>Tarjeta</label>
+      <select name="tarjeta">
+        <option value="">-- Todas --</option>
+        {% for t in tarjetas %}
+        <option value="{{ t.nombre }}" {% if tarjeta_filtro == t.nombre %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Filtrar</button></div>
+    <div><a class="btn btn-secondary" href="{{ url_for('reporte_tarjetas') }}">Limpiar</a></div>
+  </form>
+
+  <div class="resumen-cards">
+    {% for tarjeta, total in resumen.items() %}
+    <div class="stat">
+      <div class="label">{{ tarjeta }}</div>
+      <div class="value">${{ '%.2f'|format(total) }}</div>
+    </div>
+    {% endfor %}
+    <div class="stat" style="background:var(--primary);border-color:var(--primary);">
+      <div class="label" style="color:#c8e6a0;">Total general</div>
+      <div class="value" style="color:white;">${{ '%.2f'|format(total_general) }}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Tarjeta</th><th>Proveedor</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Factura</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.fecha }}</td>
+        <td>{{ r.tarjeta_usada or 'Sin especificar' }}</td>
+        <td>{{ r.proveedor_nombre or '-' }}</td>
+        <td>{{ r.producto_nombre }}</td>
+        <td>{{ r.cantidad }}</td>
+        <td>${{ '%.2f'|format(r.total) }}</td>
+        <td>{{ r.numero_factura or '-' }}</td>
+        <td>{{ r.estado_pago }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="color:#6b7280;">No hay transacciones para este filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

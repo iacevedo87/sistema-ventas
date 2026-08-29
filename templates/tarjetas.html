@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Tarjetas de la Compañía{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+
+<div class="card">
+  <h2>{{ 'Editar tarjeta' if edit_row else 'Nueva tarjeta' }}</h2>
+  <form class="form-grid" method="POST" action="{{ url_for('tarjetas') }}">
+    {% if edit_row %}<input type="hidden" name="id_tarjeta" value="{{ edit_row.id_tarjeta }}">{% endif %}
+    <div>
+      <label>Nombre / Etiqueta *</label>
+      <input type="text" name="nombre" required placeholder="ej. Card 1, Card 2" value="{{ edit_row.nombre if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Banco</label>
+      <input type="text" name="banco" value="{{ edit_row.banco if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Últimos 4 dígitos</label>
+      <input type="text" name="ultimos4" maxlength="4" value="{{ edit_row.ultimos4 if edit_row else '' }}">
+    </div>
+    <div>
+      <label>Notas</label>
+      <input type="text" name="notas" value="{{ edit_row.notas if edit_row else '' }}">
+    </div>
+    <div>
+      <button type="submit">{{ 'Actualizar' if edit_row else 'Guardar' }}</button>
+      {% if edit_row %}<a class="btn btn-secondary" href="{{ url_for('tarjetas') }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Tarjetas registradas</h2>
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Banco</th><th>Terminación</th><th>Notas</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.nombre }}</td>
+        <td>{{ r.banco or '-' }}</td>
+        <td>{{ '**** ' + r.ultimos4 if r.ultimos4 else '-' }}</td>
+        <td>{{ r.notas or '-' }}</td>
+        <td class="actions">
+          <a class="btn" href="{{ url_for('tarjetas', edit=r.id_tarjeta) }}">Editar</a>
+          <form method="POST" action="{{ url_for('delete_tarjeta', id_tarjeta=r.id_tarjeta) }}"
+                onsubmit="return confirm('¿Eliminar esta tarjeta?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="color:#6b7280;">No hay tarjetas registradas todavía.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

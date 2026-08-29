@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Ganancia por Producto{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('reportes') }}">&larr; Volver a Reportes</a>
+
+<div class="card">
+  <h2>💰 Ganancia neta por producto vendido</h2>
+  <p style="color:#6b7280;font-size:0.85rem;">
+    Se calcula restando el costo unitario <strong>actual</strong> del producto (registrado en Productos) al
+    precio al que se vendió. Si el costo de un producto cambió después de una venta antigua, esta cifra usa
+    el costo de hoy, no el de esa fecha.
+  </p>
+  <form class="filtros-reporte" method="GET" action="{{ url_for('reporte_ganancias_producto') }}">
+    <div>
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde or '' }}">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta or '' }}">
+    </div>
+    <div>
+      <label>Producto</label>
+      <select name="id_producto">
+        <option value="">-- Todos --</option>
+        {% for p in productos %}
+        <option value="{{ p.id_producto }}" {% if id_producto_filtro == p.id_producto|string %}selected{% endif %}>{{ p.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Filtrar</button></div>
+    <div><a class="btn btn-secondary" href="{{ url_for('reporte_ganancias_producto') }}">Limpiar</a></div>
+  </form>
+
+  <div class="resumen-cards">
+    <div class="stat"><div class="label">Total vendido</div><div class="value">${{ '%.2f'|format(total_ventas) }}</div></div>
+    <div class="stat"><div class="label">Total costo</div><div class="value">${{ '%.2f'|format(total_costo) }}</div></div>
+    <div class="stat" style="background:var(--accent-green);border-color:var(--accent-green);">
+      <div class="label" style="color:#e6f3e1;">Ganancia neta total</div>
+      <div class="value" style="color:white;">${{ '%.2f'|format(total_ganancia) }}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Precio venta</th><th>Costo</th><th>Ganancia</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.fecha }}</td>
+        <td>{{ r.producto_nombre }}</td>
+        <td>{{ r.cantidad }}</td>
+        <td>${{ '%.2f'|format(r.total_venta) }}</td>
+        <td>${{ '%.2f'|format(r.total_costo) }}</td>
+        <td style="color: {{ '#1f6b2b' if r.ganancia >= 0 else '#dc2626' }};"><strong>${{ '%.2f'|format(r.ganancia) }}</strong></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="color:#6b7280;">No hay resultados para este filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

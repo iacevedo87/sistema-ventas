@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+<h2>📊 Centro de Reportes</h2>
+<p style="color:#6b7280;">Elige el reporte que necesitas. Cada uno te deja filtrar por fecha y otros detalles.</p>
+
+<div class="dashboard-grid">
+  <a class="dash-btn" href="{{ url_for('reporte_resumen_mensual') }}">
+    <span class="icon">🗓️</span>
+    <span class="label">Resumen mensual</span>
+    <span class="count">Ventas, compras y nómina por día, con corte de mes</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reporte_tarjetas') }}">
+    <span class="icon">💳</span>
+    <span class="label">Transacciones por tarjeta</span>
+    <span class="count">Compras a farmacia, agrupadas por tarjeta</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reporte_pacientes_productos') }}">
+    <span class="icon">🧑‍⚕️</span>
+    <span class="label">Pacientes x Productos</span>
+    <span class="count">Qué compró cada paciente, por fecha</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reporte_nomina') }}">
+    <span class="icon">🧾</span>
+    <span class="label">Pago de nómina</span>
+    <span class="count">Historial de pagos por fecha</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reporte_ganancias_producto') }}">
+    <span class="icon">💰</span>
+    <span class="label">Ganancia neta por producto</span>
+    <span class="count">Precio de venta menos costo, por línea vendida</span>
+  </a>
+  <a class="dash-btn" href="{{ url_for('reporte_gastos_ganancias') }}">
+    <span class="icon">📈</span>
+    <span class="label">Gasto total y ganancia total</span>
+    <span class="count">Resumen general del negocio</span>
+  </a>
+</div>
+{% endblock %}

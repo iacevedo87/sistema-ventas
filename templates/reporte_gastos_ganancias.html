@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Gasto y Ganancia Total{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('reportes') }}">&larr; Volver a Reportes</a>
+
+<div class="card">
+  <h2>📈 Gasto total y ganancia total</h2>
+  <form class="filtros-reporte" method="GET" action="{{ url_for('reporte_gastos_ganancias') }}">
+    <div>
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde or '' }}">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta or '' }}">
+    </div>
+    <div><button type="submit">Filtrar</button></div>
+    <div><a class="btn btn-secondary" href="{{ url_for('reporte_gastos_ganancias') }}">Ver todo</a></div>
+  </form>
+
+  <p style="color:#6b7280;font-size:0.85rem;">
+    {% if desde or hasta %}Mostrando del {{ desde or 'inicio' }} al {{ hasta or 'hoy' }}.{% else %}Mostrando todo el historial.{% endif %}
+  </p>
+
+  <div class="resumen-cards">
+    <div class="stat">
+      <div class="label">Total ventas</div>
+      <div class="value">${{ '%.2f'|format(total_ventas) }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Compras a proveedores</div>
+      <div class="value">${{ '%.2f'|format(total_compras) }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Nómina pagada</div>
+      <div class="value">${{ '%.2f'|format(total_nomina) }}</div>
+    </div>
+    <div class="stat" style="background:#dc2626;border-color:#dc2626;">
+      <div class="label" style="color:#fecaca;">Gasto total</div>
+      <div class="value" style="color:white;">${{ '%.2f'|format(gasto_total) }}</div>
+    </div>
+    <div class="stat" style="background: {{ 'var(--accent-green)' if ganancia_total >= 0 else '#7f1d1d' }};border-color: {{ 'var(--accent-green)' if ganancia_total >= 0 else '#7f1d1d' }};">
+      <div class="label" style="color:#e6f3e1;">Ganancia total</div>
+      <div class="value" style="color:white;">${{ '%.2f'|format(ganancia_total) }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

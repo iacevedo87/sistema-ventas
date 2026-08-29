@@ -78,10 +78,15 @@ def clientes():
         data = (request.form["nombre"], request.form.get("telefono"),
                 request.form.get("email"), request.form.get("direccion"))
         if edit_id:
+            # numero_record NUNCA se toca aquí: una vez asignado, es permanente
             conn.execute("UPDATE clientes SET nombre=?, telefono=?, email=?, direccion=? WHERE id_cliente=?",
                          data + (edit_id,))
         else:
-            conn.execute("INSERT INTO clientes (nombre, telefono, email, direccion) VALUES (?,?,?,?)", data)
+            siguiente = conn.execute(
+                "SELECT COALESCE(MAX(numero_record), 0) + 1 AS n FROM clientes"
+            ).fetchone()["n"]
+            conn.execute("INSERT INTO clientes (numero_record, nombre, telefono, email, direccion) VALUES (?,?,?,?,?)",
+                         (siguiente,) + data)
         conn.commit()
         return redirect(url_for("clientes"))
     edit_row = None
@@ -167,6 +172,51 @@ def eliminar_documento(id_documento):
     return redirect(url_for("documentos_cliente", id_cliente=id_cliente) if id_cliente else url_for("clientes"))
 
 
+# ---------- TARJETAS DE LA COMPAÑÍA ----------
+@app.route("/tarjetas", methods=["GET", "POST"])
+def tarjetas():
+    conn = get_connection()
+    if request.method == "POST":
+        edit_id = request.form.get("id_tarjeta")
+        data = (request.form["nombre"], request.form.get("banco"),
+                request.form.get("ultimos4"), request.form.get("notas"))
+        if edit_id:
+            conn.execute("UPDATE tarjetas SET nombre=?, banco=?, ultimos4=?, notas=? WHERE id_tarjeta=?",
+                         data + (edit_id,))
+        else:
+            conn.execute("INSERT INTO tarjetas (nombre, banco, ultimos4, notas) VALUES (?,?,?,?)", data)
+        conn.commit()
+        return redirect(url_for("tarjetas"))
+    edit_row = None
+    if request.args.get("edit"):
+        edit_row = conn.execute("SELECT * FROM tarjetas WHERE id_tarjeta=?", (request.args["edit"],)).fetchone()
+    rows = conn.execute("SELECT * FROM tarjetas ORDER BY nombre").fetchall()
+    conn.close()
+    return render_template("tarjetas.html", rows=rows, edit_row=edit_row)
+
+
+@app.route("/tarjetas/delete/<int:id_tarjeta>", methods=["POST"])
+def delete_tarjeta(id_tarjeta):
+    conn = get_connection()
+    conn.execute("DELETE FROM tarjetas WHERE id_tarjeta=?", (id_tarjeta,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("tarjetas"))
+
+
+# ---------- CATEGORÍAS DE PRODUCTO ----------
+@app.route("/categorias/agregar", methods=["POST"])
+def agregar_categoria():
+    nombre = (request.form.get("nueva_categoria") or "").strip().upper()
+    if nombre:
+        conn = get_connection()
+        conn.execute("INSERT OR IGNORE INTO categorias (nombre) VALUES (?)", (nombre,))
+        conn.commit()
+        conn.close()
+    # Vuelve al formulario de productos, con la categoría recién creada ya seleccionable
+    return redirect(url_for("productos", nueva_cat=nombre))
+
+
 # ---------- PROVEEDORES ----------
 @app.route("/proveedores", methods=["GET", "POST"])
 def proveedores():
@@ -201,9 +251,6 @@ def delete_proveedor(id_proveedor):
 
 
 # ---------- PRODUCTOS ----------
-CATEGORIAS_PRODUCTO = ["MEDICATION", "SUPPLY", "TRANSPORTATION", "SERVICE", "OTHER"]
-
-
 @app.route("/productos", methods=["GET", "POST"])
 def productos():
     conn = get_connection()
@@ -216,27 +263,31 @@ def productos():
                 float(request.form.get("costo_unitario") or 0),
                 float(volumen) if volumen else None,
                 int(float(request.form.get("stock") or 0)),
+                request.form.get("lote_numero"),
+                request.form.get("fecha_vencimiento") or None,
                 request.form.get("id_proveedor") or None)
         if edit_id:
             conn.execute("""UPDATE productos SET nombre=?, descripcion=?, categoria=?, precio=?,
-                             costo_unitario=?, volumen_ml=?, stock=?, id_proveedor=?
+                             costo_unitario=?, volumen_ml=?, stock=?, lote_numero=?, fecha_vencimiento=?, id_proveedor=?
                              WHERE id_producto=?""", data + (edit_id,))
         else:
             conn.execute("""INSERT INTO productos
-                             (nombre, descripcion, categoria, precio, costo_unitario, volumen_ml, stock, id_proveedor)
-                             VALUES (?,?,?,?,?,?,?,?)""", data)
+                             (nombre, descripcion, categoria, precio, costo_unitario, volumen_ml, stock,
+                              lote_numero, fecha_vencimiento, id_proveedor)
+                             VALUES (?,?,?,?,?,?,?,?,?,?)""", data)
         conn.commit()
         return redirect(url_for("productos"))
     edit_row = None
     if request.args.get("edit"):
         edit_row = conn.execute("SELECT * FROM productos WHERE id_producto=?", (request.args["edit"],)).fetchone()
     proveedores_list = conn.execute("SELECT * FROM proveedores ORDER BY nombre").fetchall()
+    categorias_list = [r["nombre"] for r in conn.execute("SELECT nombre FROM categorias ORDER BY nombre").fetchall()]
     rows = conn.execute("""SELECT p.*, pr.nombre AS proveedor_nombre FROM productos p
                             LEFT JOIN proveedores pr ON p.id_proveedor = pr.id_proveedor
                             ORDER BY p.id_producto DESC""").fetchall()
     conn.close()
     return render_template("productos.html", rows=rows, edit_row=edit_row, proveedores=proveedores_list,
-                           categorias=CATEGORIAS_PRODUCTO)
+                           categorias=categorias_list, nueva_cat=request.args.get("nueva_cat"))
 
 
 @app.route("/productos/delete/<int:id_producto>", methods=["POST"])
@@ -335,6 +386,7 @@ def ventas():
         id_trabajador = request.form.get("id_trabajador") or None
         estado_pago = request.form.get("estado_pago") or "Paid"
         metodo_pago = request.form.get("metodo_pago") or None
+        observaciones = request.form.get("observaciones") or None
         fecha = request.form.get("fecha") or date.today().isoformat()
         productos_ids = request.form.getlist("id_producto[]")
         cantidades = request.form.getlist("cantidad[]")
@@ -354,8 +406,9 @@ def ventas():
 
         if detalles:
             cur = conn.execute(
-                "INSERT INTO ventas (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha) VALUES (?,?,?,?,?,?)",
-                (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha))
+                """INSERT INTO ventas (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha, observaciones)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha, observaciones))
             id_venta = cur.lastrowid
             for pid, cant, precio in detalles:
                 conn.execute("""INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario)
@@ -507,9 +560,10 @@ def compras():
                             LEFT JOIN clientes cl ON c.id_cliente = cl.id_cliente
                             JOIN productos p ON c.id_producto = p.id_producto
                             ORDER BY c.fecha DESC, c.id_compra DESC""").fetchall()
+    tarjetas_list = conn.execute("SELECT * FROM tarjetas ORDER BY nombre").fetchall()
     conn.close()
     return render_template("compras.html", rows=rows, proveedores=proveedores_list, hoy=date.today().isoformat(),
-                           clientes=clientes_list, productos=productos_list)
+                           clientes=clientes_list, productos=productos_list, tarjetas=tarjetas_list)
 
 
 @app.route("/compras/delete/<int:id_compra>", methods=["POST"])
@@ -538,9 +592,33 @@ def inventario():
     return render_template("inventario.html", rows=rows, valor_total_inventario=valor_total_inventario)
 
 
-# ---------- REPORTES: VENTAS, COMPRAS Y NÓMINA POR FECHA, CON CORTE MENSUAL ----------
+# ---------- REPORTES: PANEL CENTRAL ----------
 @app.route("/reportes")
 def reportes():
+    return render_template("reportes_hub.html")
+
+
+def _rango_fechas():
+    """Lee ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD de la URL; None si no se especifican (=todo)."""
+    desde = request.args.get("desde") or None
+    hasta = request.args.get("hasta") or None
+    return desde, hasta
+
+
+def _filtro_fecha_sql(columna, desde, hasta):
+    condiciones, params = [], []
+    if desde:
+        condiciones.append(f"{columna} >= ?")
+        params.append(desde)
+    if hasta:
+        condiciones.append(f"{columna} <= ?")
+        params.append(hasta)
+    return condiciones, params
+
+
+# ---------- REPORTE 1: RESUMEN MENSUAL (ventas, compras y nómina por fecha, con corte) ----------
+@app.route("/reportes/resumen-mensual")
+def reporte_resumen_mensual():
     conn = get_connection()
 
     ventas_por_fecha = conn.execute("""
@@ -552,15 +630,11 @@ def reportes():
     nomina_por_fecha = conn.execute("""
         SELECT fecha_pago AS fecha, SUM(salario_neto) AS total FROM nomina WHERE fecha_pago IS NOT NULL GROUP BY fecha_pago
     """).fetchall()
-
-    # Nómina fija mensual: suma del salario de todos los trabajadores activos (solo como referencia)
     nomina_fija_mensual = conn.execute(
         "SELECT COALESCE(SUM(salario), 0) AS total FROM trabajadores"
     ).fetchone()["total"]
-
     conn.close()
 
-    # Combinar los 3 movimientos en un diccionario por fecha exacta
     por_fecha = {}
     for row in ventas_por_fecha:
         por_fecha.setdefault(row["fecha"], {"ventas": 0, "compras": 0, "nomina": 0})
@@ -572,20 +646,15 @@ def reportes():
         por_fecha.setdefault(row["fecha"], {"ventas": 0, "compras": 0, "nomina": 0})
         por_fecha[row["fecha"]]["nomina"] = row["total"] or 0
 
-    # Agrupar las fechas por mes (YYYY-MM), ordenadas del mes más reciente al más antiguo
     meses = {}
     for fecha, movimientos in por_fecha.items():
-        mes = fecha[:7]  # 'YYYY-MM'
+        mes = fecha[:7]
         meses.setdefault(mes, {"dias": [], "total_ventas": 0, "total_compras": 0, "total_nomina": 0})
         ganancia_bruta = movimientos["ventas"] - movimientos["compras"]
         ganancia_neta_dia = ganancia_bruta - movimientos["nomina"]
         meses[mes]["dias"].append({
-            "fecha": fecha,
-            "ventas": movimientos["ventas"],
-            "compras": movimientos["compras"],
-            "ganancia_bruta": ganancia_bruta,
-            "nomina": movimientos["nomina"],
-            "ganancia_neta": ganancia_neta_dia,
+            "fecha": fecha, "ventas": movimientos["ventas"], "compras": movimientos["compras"],
+            "ganancia_bruta": ganancia_bruta, "nomina": movimientos["nomina"], "ganancia_neta": ganancia_neta_dia,
         })
         meses[mes]["total_ventas"] += movimientos["ventas"]
         meses[mes]["total_compras"] += movimientos["compras"]
@@ -598,16 +667,170 @@ def reportes():
         total_ganancia_bruta = datos_mes["total_ventas"] - datos_mes["total_compras"]
         corte_ganancia_neta = total_ganancia_bruta - datos_mes["total_nomina"]
         reporte_meses.append({
-            "mes": mes,
-            "dias": datos_mes["dias"],
-            "total_ventas": datos_mes["total_ventas"],
-            "total_compras": datos_mes["total_compras"],
-            "total_ganancia_bruta": total_ganancia_bruta,
-            "total_nomina": datos_mes["total_nomina"],
-            "corte_ganancia_neta": corte_ganancia_neta,
+            "mes": mes, "dias": datos_mes["dias"], "total_ventas": datos_mes["total_ventas"],
+            "total_compras": datos_mes["total_compras"], "total_ganancia_bruta": total_ganancia_bruta,
+            "total_nomina": datos_mes["total_nomina"], "corte_ganancia_neta": corte_ganancia_neta,
         })
 
     return render_template("reportes.html", meses=reporte_meses, nomina_fija_mensual=nomina_fija_mensual)
+
+
+# ---------- REPORTE 2: TRANSACCIONES POR TARJETA ----------
+@app.route("/reportes/tarjetas")
+def reporte_tarjetas():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+    tarjeta_filtro = request.args.get("tarjeta") or ""
+
+    condiciones, params = _filtro_fecha_sql("c.fecha", desde, hasta)
+    if tarjeta_filtro:
+        condiciones.append("c.tarjeta_usada = ?")
+        params.append(tarjeta_filtro)
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    rows = conn.execute(f"""
+        SELECT c.*, pr.nombre AS proveedor_nombre, p.nombre AS producto_nombre
+        FROM compras_proveedores c
+        LEFT JOIN proveedores pr ON c.id_proveedor = pr.id_proveedor
+        JOIN productos p ON c.id_producto = p.id_producto
+        {where}
+        ORDER BY c.fecha DESC
+    """, params).fetchall()
+
+    tarjetas_list = conn.execute("SELECT * FROM tarjetas ORDER BY nombre").fetchall()
+    conn.close()
+
+    resumen_por_tarjeta = {}
+    for r in rows:
+        clave = r["tarjeta_usada"] or "Sin especificar"
+        resumen_por_tarjeta.setdefault(clave, 0)
+        resumen_por_tarjeta[clave] += r["total"]
+
+    total_general = sum(r["total"] for r in rows)
+    return render_template("reporte_tarjetas.html", rows=rows, tarjetas=tarjetas_list,
+                           resumen=resumen_por_tarjeta, total_general=total_general,
+                           desde=desde, hasta=hasta, tarjeta_filtro=tarjeta_filtro)
+
+
+# ---------- REPORTE 3: PACIENTES x PRODUCTOS, POR FECHA ----------
+@app.route("/reportes/pacientes-productos")
+def reporte_pacientes_productos():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+    id_cliente_filtro = request.args.get("id_cliente") or ""
+
+    condiciones, params = _filtro_fecha_sql("v.fecha", desde, hasta)
+    if id_cliente_filtro:
+        condiciones.append("v.id_cliente = ?")
+        params.append(id_cliente_filtro)
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    rows = conn.execute(f"""
+        SELECT v.fecha, c.nombre AS cliente_nombre, c.numero_record, p.nombre AS producto_nombre,
+               d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) AS subtotal, v.estado_pago
+        FROM detalle_ventas d
+        JOIN ventas v ON d.id_venta = v.id_venta
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+        JOIN productos p ON d.id_producto = p.id_producto
+        {where}
+        ORDER BY v.fecha DESC, c.nombre ASC
+    """, params).fetchall()
+
+    clientes_list = conn.execute("SELECT * FROM clientes ORDER BY nombre").fetchall()
+    conn.close()
+    return render_template("reporte_pacientes_productos.html", rows=rows, clientes=clientes_list,
+                           desde=desde, hasta=hasta, id_cliente_filtro=id_cliente_filtro)
+
+
+# ---------- REPORTE 4: PAGO DE NÓMINA POR FECHA ----------
+@app.route("/reportes/nomina")
+def reporte_nomina():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+    id_trabajador_filtro = request.args.get("id_trabajador") or ""
+
+    condiciones, params = _filtro_fecha_sql("n.fecha_pago", desde, hasta)
+    if id_trabajador_filtro:
+        condiciones.append("n.id_trabajador = ?")
+        params.append(id_trabajador_filtro)
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    rows = conn.execute(f"""
+        SELECT n.*, t.nombre AS trabajador_nombre FROM nomina n
+        JOIN trabajadores t ON n.id_trabajador = t.id_trabajador
+        {where}
+        ORDER BY n.fecha_pago DESC
+    """, params).fetchall()
+
+    trabajadores_list = conn.execute("SELECT * FROM trabajadores ORDER BY nombre").fetchall()
+    conn.close()
+    total_bruto = sum(r["salario_bruto"] for r in rows)
+    total_deducciones = sum(r["deducciones"] for r in rows)
+    total_neto = sum(r["salario_neto"] for r in rows)
+    return render_template("reporte_nomina.html", rows=rows, trabajadores=trabajadores_list,
+                           desde=desde, hasta=hasta, id_trabajador_filtro=id_trabajador_filtro,
+                           total_bruto=total_bruto, total_deducciones=total_deducciones, total_neto=total_neto)
+
+
+# ---------- REPORTE 5: GANANCIA NETA POR PRODUCTO VENDIDO ----------
+@app.route("/reportes/ganancias-producto")
+def reporte_ganancias_producto():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+    id_producto_filtro = request.args.get("id_producto") or ""
+
+    condiciones, params = _filtro_fecha_sql("v.fecha", desde, hasta)
+    if id_producto_filtro:
+        condiciones.append("d.id_producto = ?")
+        params.append(id_producto_filtro)
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    rows = conn.execute(f"""
+        SELECT v.fecha, p.nombre AS producto_nombre, d.cantidad, d.precio_unitario,
+               p.costo_unitario, (d.cantidad * d.precio_unitario) AS total_venta,
+               (d.cantidad * p.costo_unitario) AS total_costo,
+               (d.cantidad * (d.precio_unitario - p.costo_unitario)) AS ganancia
+        FROM detalle_ventas d
+        JOIN ventas v ON d.id_venta = v.id_venta
+        JOIN productos p ON d.id_producto = p.id_producto
+        {where}
+        ORDER BY v.fecha DESC
+    """, params).fetchall()
+
+    productos_list = conn.execute("SELECT * FROM productos ORDER BY nombre").fetchall()
+    conn.close()
+    total_ventas = sum(r["total_venta"] for r in rows)
+    total_costo = sum(r["total_costo"] for r in rows)
+    total_ganancia = sum(r["ganancia"] for r in rows)
+    return render_template("reporte_ganancias_producto.html", rows=rows, productos=productos_list,
+                           desde=desde, hasta=hasta, id_producto_filtro=id_producto_filtro,
+                           total_ventas=total_ventas, total_costo=total_costo, total_ganancia=total_ganancia)
+
+
+# ---------- REPORTE 6: GASTO TOTAL Y GANANCIA TOTAL ----------
+@app.route("/reportes/gastos-ganancias")
+def reporte_gastos_ganancias():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+
+    cond_v, params_v = _filtro_fecha_sql("fecha", desde, hasta)
+    where_v = ("WHERE " + " AND ".join(cond_v)) if cond_v else ""
+    total_ventas = conn.execute(f"SELECT COALESCE(SUM(total),0) t FROM ventas {where_v}", params_v).fetchone()["t"]
+
+    cond_c, params_c = _filtro_fecha_sql("fecha", desde, hasta)
+    where_c = ("WHERE " + " AND ".join(cond_c)) if cond_c else ""
+    total_compras = conn.execute(f"SELECT COALESCE(SUM(total),0) t FROM compras_proveedores {where_c}", params_c).fetchone()["t"]
+
+    cond_n, params_n = _filtro_fecha_sql("fecha_pago", desde, hasta)
+    where_n = ("WHERE " + " AND ".join(cond_n)) if cond_n else ""
+    total_nomina = conn.execute(f"SELECT COALESCE(SUM(salario_neto),0) t FROM nomina {where_n}", params_n).fetchone()["t"]
+
+    conn.close()
+    gasto_total = total_compras + total_nomina
+    ganancia_total = total_ventas - gasto_total
+    return render_template("reporte_gastos_ganancias.html", total_ventas=total_ventas, total_compras=total_compras,
+                           total_nomina=total_nomina, gasto_total=gasto_total, ganancia_total=ganancia_total,
+                           desde=desde, hasta=hasta)
 
 
 if __name__ == "__main__":

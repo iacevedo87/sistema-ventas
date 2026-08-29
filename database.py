@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS proveedores (
 
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente      INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero_record   INTEGER,
     nombre          TEXT NOT NULL,
     telefono        TEXT,
     email           TEXT,
@@ -25,16 +26,31 @@ CREATE TABLE IF NOT EXISTS clientes (
     fecha_registro  TEXT DEFAULT (date('now'))
 );
 
-CREATE TABLE IF NOT EXISTS productos (
-    id_producto     INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE IF NOT EXISTS categorias (
+    id_categoria    INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre          TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS tarjetas (
+    id_tarjeta      INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre          TEXT NOT NULL,
-    descripcion     TEXT,
-    categoria       TEXT DEFAULT 'MEDICATION',
-    precio          REAL NOT NULL DEFAULT 0,
-    costo_unitario  REAL NOT NULL DEFAULT 0,
-    volumen_ml      REAL,
-    stock           INTEGER NOT NULL DEFAULT 0,
-    id_proveedor    INTEGER,
+    banco           TEXT,
+    ultimos4        TEXT,
+    notas           TEXT
+);
+
+CREATE TABLE IF NOT EXISTS productos (
+    id_producto       INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre            TEXT NOT NULL,
+    descripcion       TEXT,
+    categoria         TEXT DEFAULT 'MEDICATION',
+    precio            REAL NOT NULL DEFAULT 0,
+    costo_unitario    REAL NOT NULL DEFAULT 0,
+    volumen_ml        REAL,
+    stock             INTEGER NOT NULL DEFAULT 0,
+    lote_numero       TEXT,
+    fecha_vencimiento TEXT,
+    id_proveedor      INTEGER,
     FOREIGN KEY (id_proveedor) REFERENCES proveedores(id_proveedor) ON DELETE SET NULL
 );
 
@@ -65,6 +81,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     total           REAL DEFAULT 0,
     estado_pago     TEXT DEFAULT 'Paid',
     metodo_pago     TEXT,
+    observaciones   TEXT,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id_trabajador) ON DELETE SET NULL
 );
@@ -117,13 +134,19 @@ CREATE TABLE IF NOT EXISTS documentos_clientes (
 );
 """
 
+CATEGORIAS_INICIALES = ["MEDICATION", "SUPPLY", "TRANSPORTATION", "SERVICE", "OTHER"]
+
 # Columnas nuevas agregadas a tablas que ya podrían existir en bases de datos previas
 MIGRACIONES = [
     ("productos", "categoria", "TEXT DEFAULT 'MEDICATION'"),
     ("productos", "costo_unitario", "REAL NOT NULL DEFAULT 0"),
     ("productos", "volumen_ml", "REAL"),
+    ("productos", "lote_numero", "TEXT"),
+    ("productos", "fecha_vencimiento", "TEXT"),
     ("ventas", "estado_pago", "TEXT DEFAULT 'Paid'"),
     ("ventas", "metodo_pago", "TEXT"),
+    ("ventas", "observaciones", "TEXT"),
+    ("clientes", "numero_record", "INTEGER"),
 ]
 
 
@@ -142,11 +165,37 @@ def _aplicar_migraciones(conn):
     conn.commit()
 
 
+def _backfill_numero_record(conn):
+    """Asigna número de récord secuencial a clientes que no lo tengan (por orden de alta)."""
+    sin_numero = conn.execute(
+        "SELECT id_cliente FROM clientes WHERE numero_record IS NULL ORDER BY id_cliente ASC"
+    ).fetchall()
+    if not sin_numero:
+        return
+    siguiente = conn.execute(
+        "SELECT COALESCE(MAX(numero_record), 0) + 1 AS n FROM clientes"
+    ).fetchone()["n"]
+    for row in sin_numero:
+        conn.execute("UPDATE clientes SET numero_record=? WHERE id_cliente=?", (siguiente, row["id_cliente"]))
+        siguiente += 1
+    conn.commit()
+
+
+def _seed_categorias(conn):
+    count = conn.execute("SELECT COUNT(*) c FROM categorias").fetchone()["c"]
+    if count == 0:
+        for cat in CATEGORIAS_INICIALES:
+            conn.execute("INSERT OR IGNORE INTO categorias (nombre) VALUES (?)", (cat,))
+        conn.commit()
+
+
 def init_db():
     conn = get_connection()
     conn.executescript(SCHEMA)
     conn.commit()
     _aplicar_migraciones(conn)
+    _backfill_numero_record(conn)
+    _seed_categorias(conn)
     # Crear un usuario administrador por defecto si la tabla usuarios está vacía
     count = conn.execute("SELECT COUNT(*) c FROM usuarios").fetchone()["c"]
     if count == 0:

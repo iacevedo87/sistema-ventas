@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Reporte de Nómina{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('reportes') }}">&larr; Volver a Reportes</a>
+
+<div class="card">
+  <h2>🧾 Pago de nómina por fecha</h2>
+  <form class="filtros-reporte" method="GET" action="{{ url_for('reporte_nomina') }}">
+    <div>
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde or '' }}">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta or '' }}">
+    </div>
+    <div>
+      <label>Trabajador</label>
+      <select name="id_trabajador">
+        <option value="">-- Todos --</option>
+        {% for t in trabajadores %}
+        <option value="{{ t.id_trabajador }}" {% if id_trabajador_filtro == t.id_trabajador|string %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Filtrar</button></div>
+    <div><a class="btn btn-secondary" href="{{ url_for('reporte_nomina') }}">Limpiar</a></div>
+  </form>
+
+  <div class="resumen-cards">
+    <div class="stat"><div class="label">Total bruto</div><div class="value">${{ '%.2f'|format(total_bruto) }}</div></div>
+    <div class="stat"><div class="label">Total deducciones</div><div class="value">${{ '%.2f'|format(total_deducciones) }}</div></div>
+    <div class="stat" style="background:var(--primary);border-color:var(--primary);">
+      <div class="label" style="color:#c8e6a0;">Total neto pagado</div>
+      <div class="value" style="color:white;">${{ '%.2f'|format(total_neto) }}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Fecha de pago</th><th>Trabajador</th><th>Periodo</th><th>Bruto</th><th>Deducciones</th><th>Neto</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.fecha_pago }}</td>
+        <td>{{ r.trabajador_nombre }}</td>
+        <td>{{ r.periodo or '-' }}</td>
+        <td>${{ '%.2f'|format(r.salario_bruto) }}</td>
+        <td>${{ '%.2f'|format(r.deducciones) }}</td>
+        <td><strong>${{ '%.2f'|format(r.salario_neto) }}</strong></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="color:#6b7280;">No hay pagos para este filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

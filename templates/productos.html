@@ -12,11 +12,18 @@
     </div>
     <div>
       <label>Categoría</label>
-      <select name="categoria">
-        {% for cat in categorias %}
-        <option value="{{ cat }}" {% if edit_row and edit_row.categoria == cat %}selected{% endif %}>{{ cat }}</option>
-        {% endfor %}
-      </select>
+      <div style="display:flex;gap:6px;">
+        <select name="categoria" id="select-categoria" style="flex:1;">
+          {% for cat in categorias %}
+          <option value="{{ cat }}" {% if (edit_row and edit_row.categoria == cat) or (not edit_row and nueva_cat == cat) %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('form-nueva-cat').style.display='flex'; this.style.display='none';">+ Nueva</button>
+      </div>
+      <form id="form-nueva-cat" method="POST" action="{{ url_for('agregar_categoria') }}" style="display:none;gap:6px;margin-top:6px;">
+        <input type="text" name="nueva_categoria" placeholder="Nombre de la categoría" style="flex:1;" required>
+        <button type="submit" class="btn">Agregar</button>
+      </form>
     </div>
     <div>
       <label>Descripción</label>
@@ -33,6 +40,14 @@
     <div>
       <label>Volumen por vial/paquete (ml)</label>
       <input type="number" step="0.01" min="0" name="volumen_ml" value="{{ edit_row.volumen_ml if edit_row and edit_row.volumen_ml else '' }}">
+    </div>
+    <div>
+      <label>Número de lote</label>
+      <input type="text" name="lote_numero" value="{{ edit_row.lote_numero if edit_row and edit_row.lote_numero else '' }}">
+    </div>
+    <div>
+      <label>Fecha de expiración</label>
+      <input type="date" name="fecha_vencimiento" value="{{ edit_row.fecha_vencimiento if edit_row and edit_row.fecha_vencimiento else '' }}">
     </div>
     <div>
       <label>Stock *</label>
@@ -60,7 +75,7 @@
     <thead>
       <tr>
         <th>#</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Costo</th>
-        <th>Margen $</th><th>Margen %</th><th>Vol. (ml)</th><th>Stock</th><th>Proveedor</th><th>Acciones</th>
+        <th>Margen $</th><th>Margen %</th><th>Vol. (ml)</th><th>Lote</th><th>Vence</th><th>Stock</th><th>Proveedor</th><th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -76,6 +91,8 @@
         <td style="color: {{ '#1f6b2b' if margen_dolar >= 0 else '#dc2626' }};">${{ '%.2f'|format(margen_dolar) }}</td>
         <td style="color: {{ '#1f6b2b' if margen_pct >= 0 else '#dc2626' }};">{{ '%.1f'|format(margen_pct) }}%</td>
         <td>{{ r.volumen_ml or '-' }}</td>
+        <td>{{ r.lote_numero or '-' }}</td>
+        <td>{{ r.fecha_vencimiento or '-' }}</td>
         <td>{{ r.stock }}</td>
         <td>{{ r.proveedor_nombre or '-' }}</td>
         <td class="actions">
@@ -87,7 +104,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="11" style="color:#6b7280;">No hay productos registrados.</td></tr>
+      <tr><td colspan="13" style="color:#6b7280;">No hay productos registrados.</td></tr>
       {% endfor %}
     </tbody>
   </table>

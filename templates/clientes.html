@@ -33,12 +33,12 @@
   <h2>Listado de clientes</h2>
   <table>
     <thead>
-      <tr><th>#</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Registro</th><th>Acciones</th></tr>
+      <tr><th>Récord #</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Registro</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.id_cliente }}</td>
+        <td><span class="badge">#{{ r.numero_record }}</span></td>
         <td>{{ r.nombre }}</td>
         <td>{{ r.telefono or '-' }}</td>
         <td>{{ r.email or '-' }}</td>
