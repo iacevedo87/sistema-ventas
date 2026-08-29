@@ -151,8 +151,14 @@ MIGRACIONES = [
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute("PRAGMA foreign_keys = ON;")
+    # WAL permite que lecturas y escrituras convivan sin bloquearse entre sí de inmediato,
+    # y busy_timeout hace que, si hay un choque puntual, espere unos segundos en vez de
+    # fallar al instante con "database is locked" (útil cuando varias personas usan la
+    # app al mismo tiempo desde distintas computadoras).
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 15000;")
     conn.row_factory = sqlite3.Row
     return conn
 
