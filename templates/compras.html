@@ -11,6 +11,10 @@
   </p>
   <form class="form-grid" method="POST" action="{{ url_for('compras') }}">
     <div>
+      <label>Fecha de la compra</label>
+      <input type="date" name="fecha" value="{{ hoy }}">
+    </div>
+    <div>
       <label>Proveedor / Farmacia</label>
       <select name="id_proveedor">
         <option value="">-- Sin especificar --</option>
@@ -30,10 +34,10 @@
     </div>
     <div>
       <label>Producto *</label>
-      <select name="id_producto" required>
+      <select name="id_producto" id="select-producto" required onchange="autocompletarCosto()">
         <option value="">-- Selecciona --</option>
         {% for p in productos %}
-        <option value="{{ p.id_producto }}">{{ p.nombre }}</option>
+        <option value="{{ p.id_producto }}" data-costo="{{ p.costo_unitario or 0 }}">{{ p.nombre }}</option>
         {% endfor %}
       </select>
     </div>
@@ -43,7 +47,8 @@
     </div>
     <div>
       <label>Costo unitario *</label>
-      <input type="number" step="0.01" min="0" name="costo_unitario" required value="0">
+      <input type="number" step="0.01" min="0" name="costo_unitario" id="input-costo" required value="0">
+      <small style="color:#6b7280;">Se autocompleta con el costo registrado en Productos — puedes ajustarlo si esta compra tuvo un precio distinto.</small>
     </div>
     <div>
       <label>Número de factura</label>
@@ -66,6 +71,15 @@
     </div>
   </form>
 </div>
+
+<script>
+function autocompletarCosto() {
+  const select = document.getElementById('select-producto');
+  const opt = select.options[select.selectedIndex];
+  const costo = opt ? parseFloat(opt.getAttribute('data-costo')) || 0 : 0;
+  document.getElementById('input-costo').value = costo.toFixed(2);
+}
+</script>
 
 <div class="card">
   <h2>Historial de compras</h2>

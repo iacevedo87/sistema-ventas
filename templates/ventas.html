@@ -8,6 +8,10 @@
   <form method="POST" action="{{ url_for('ventas') }}" id="venta-form">
     <div class="form-grid" style="margin-bottom:16px;">
       <div>
+        <label>Fecha de la venta</label>
+        <input type="date" name="fecha" value="{{ hoy }}">
+      </div>
+      <div>
         <label>Cliente</label>
         <select name="id_cliente">
           <option value="">-- Sin cliente --</option>

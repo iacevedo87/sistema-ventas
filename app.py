@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_connection, init_db
 import plantillas
 import os
+from datetime import date
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "cambia-esta-clave-en-produccion")
@@ -334,6 +335,7 @@ def ventas():
         id_trabajador = request.form.get("id_trabajador") or None
         estado_pago = request.form.get("estado_pago") or "Paid"
         metodo_pago = request.form.get("metodo_pago") or None
+        fecha = request.form.get("fecha") or date.today().isoformat()
         productos_ids = request.form.getlist("id_producto[]")
         cantidades = request.form.getlist("cantidad[]")
 
@@ -352,8 +354,8 @@ def ventas():
 
         if detalles:
             cur = conn.execute(
-                "INSERT INTO ventas (id_cliente, id_trabajador, total, estado_pago, metodo_pago) VALUES (?,?,?,?,?)",
-                (id_cliente, id_trabajador, total, estado_pago, metodo_pago))
+                "INSERT INTO ventas (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha) VALUES (?,?,?,?,?,?)",
+                (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha))
             id_venta = cur.lastrowid
             for pid, cant, precio in detalles:
                 conn.execute("""INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario)
@@ -369,7 +371,7 @@ def ventas():
                                    FROM ventas v
                                    LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
                                    LEFT JOIN trabajadores t ON v.id_trabajador = t.id_trabajador
-                                   ORDER BY v.id_venta DESC""").fetchall()
+                                   ORDER BY v.fecha DESC, v.id_venta DESC""").fetchall()
     detalles_por_venta = {}
     for v in ventas_rows:
         dets = conn.execute("""SELECT d.*, p.nombre AS producto_nombre FROM detalle_ventas d
@@ -378,7 +380,8 @@ def ventas():
         detalles_por_venta[v["id_venta"]] = dets
     conn.close()
     return render_template("ventas.html", clientes=clientes_list, trabajadores=trabajadores_list,
-                           productos=productos_list, ventas=ventas_rows, detalles=detalles_por_venta)
+                           productos=productos_list, ventas=ventas_rows, detalles=detalles_por_venta,
+                           hoy=date.today().isoformat())
 
 
 @app.route("/ventas/delete/<int:id_venta>", methods=["POST"])
@@ -481,13 +484,14 @@ def compras():
         numero_factura = request.form.get("numero_factura")
         tarjeta_usada = request.form.get("tarjeta_usada")
         estado_pago = request.form.get("estado_pago") or "Paid"
+        fecha = request.form.get("fecha") or date.today().isoformat()
 
         conn.execute("""INSERT INTO compras_proveedores
                          (id_proveedor, id_cliente, id_producto, cantidad, costo_unitario, total,
-                          numero_factura, tarjeta_usada, estado_pago)
-                         VALUES (?,?,?,?,?,?,?,?,?)""",
+                          numero_factura, tarjeta_usada, estado_pago, fecha)
+                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
                      (id_proveedor, id_cliente, id_producto, cantidad, costo_unitario, total,
-                      numero_factura, tarjeta_usada, estado_pago))
+                      numero_factura, tarjeta_usada, estado_pago, fecha))
         # Esta compra entra al inventario: sube el stock del producto
         conn.execute("UPDATE productos SET stock = stock + ? WHERE id_producto=?", (cantidad, id_producto))
         conn.commit()
@@ -502,9 +506,9 @@ def compras():
                             LEFT JOIN proveedores pr ON c.id_proveedor = pr.id_proveedor
                             LEFT JOIN clientes cl ON c.id_cliente = cl.id_cliente
                             JOIN productos p ON c.id_producto = p.id_producto
-                            ORDER BY c.id_compra DESC""").fetchall()
+                            ORDER BY c.fecha DESC, c.id_compra DESC""").fetchall()
     conn.close()
-    return render_template("compras.html", rows=rows, proveedores=proveedores_list,
+    return render_template("compras.html", rows=rows, proveedores=proveedores_list, hoy=date.today().isoformat(),
                            clientes=clientes_list, productos=productos_list)
 
 
@@ -534,52 +538,76 @@ def inventario():
     return render_template("inventario.html", rows=rows, valor_total_inventario=valor_total_inventario)
 
 
-# ---------- REPORTES: VENTAS POR MES Y GANANCIA NETA ----------
+# ---------- REPORTES: VENTAS, COMPRAS Y NÓMINA POR FECHA, CON CORTE MENSUAL ----------
 @app.route("/reportes")
 def reportes():
     conn = get_connection()
 
-    ventas_por_mes = conn.execute("""
-        SELECT strftime('%Y-%m', fecha) AS mes, SUM(total) AS total_ventas
-        FROM ventas
-        GROUP BY mes
+    ventas_por_fecha = conn.execute("""
+        SELECT fecha, SUM(total) AS total FROM ventas WHERE fecha IS NOT NULL GROUP BY fecha
+    """).fetchall()
+    compras_por_fecha = conn.execute("""
+        SELECT fecha, SUM(total) AS total FROM compras_proveedores WHERE fecha IS NOT NULL GROUP BY fecha
+    """).fetchall()
+    nomina_por_fecha = conn.execute("""
+        SELECT fecha_pago AS fecha, SUM(salario_neto) AS total FROM nomina WHERE fecha_pago IS NOT NULL GROUP BY fecha_pago
     """).fetchall()
 
-    nomina_por_mes = conn.execute("""
-        SELECT strftime('%Y-%m', fecha_pago) AS mes, SUM(salario_neto) AS total_nomina
-        FROM nomina
-        GROUP BY mes
-    """).fetchall()
-
-    # Nómina fija mensual: suma del salario de todos los trabajadores activos
+    # Nómina fija mensual: suma del salario de todos los trabajadores activos (solo como referencia)
     nomina_fija_mensual = conn.execute(
         "SELECT COALESCE(SUM(salario), 0) AS total FROM trabajadores"
     ).fetchone()["total"]
 
     conn.close()
 
-    datos = {}
-    for row in ventas_por_mes:
-        if row["mes"]:
-            datos[row["mes"]] = {"ventas": row["total_ventas"] or 0, "nomina": 0}
-    for row in nomina_por_mes:
-        if row["mes"]:
-            datos.setdefault(row["mes"], {"ventas": 0, "nomina": 0})
-            datos[row["mes"]]["nomina"] = row["total_nomina"] or 0
+    # Combinar los 3 movimientos en un diccionario por fecha exacta
+    por_fecha = {}
+    for row in ventas_por_fecha:
+        por_fecha.setdefault(row["fecha"], {"ventas": 0, "compras": 0, "nomina": 0})
+        por_fecha[row["fecha"]]["ventas"] = row["total"] or 0
+    for row in compras_por_fecha:
+        por_fecha.setdefault(row["fecha"], {"ventas": 0, "compras": 0, "nomina": 0})
+        por_fecha[row["fecha"]]["compras"] = row["total"] or 0
+    for row in nomina_por_fecha:
+        por_fecha.setdefault(row["fecha"], {"ventas": 0, "compras": 0, "nomina": 0})
+        por_fecha[row["fecha"]]["nomina"] = row["total"] or 0
 
-    meses = []
-    for mes in sorted(datos.keys(), reverse=True):
-        ventas = datos[mes]["ventas"]
-        nomina_pagada = datos[mes]["nomina"]
-        ganancia = ventas - nomina_pagada
-        meses.append({
+    # Agrupar las fechas por mes (YYYY-MM), ordenadas del mes más reciente al más antiguo
+    meses = {}
+    for fecha, movimientos in por_fecha.items():
+        mes = fecha[:7]  # 'YYYY-MM'
+        meses.setdefault(mes, {"dias": [], "total_ventas": 0, "total_compras": 0, "total_nomina": 0})
+        ganancia_bruta = movimientos["ventas"] - movimientos["compras"]
+        ganancia_neta_dia = ganancia_bruta - movimientos["nomina"]
+        meses[mes]["dias"].append({
+            "fecha": fecha,
+            "ventas": movimientos["ventas"],
+            "compras": movimientos["compras"],
+            "ganancia_bruta": ganancia_bruta,
+            "nomina": movimientos["nomina"],
+            "ganancia_neta": ganancia_neta_dia,
+        })
+        meses[mes]["total_ventas"] += movimientos["ventas"]
+        meses[mes]["total_compras"] += movimientos["compras"]
+        meses[mes]["total_nomina"] += movimientos["nomina"]
+
+    reporte_meses = []
+    for mes in sorted(meses.keys(), reverse=True):
+        datos_mes = meses[mes]
+        datos_mes["dias"].sort(key=lambda d: d["fecha"], reverse=True)
+        total_ganancia_bruta = datos_mes["total_ventas"] - datos_mes["total_compras"]
+        corte_ganancia_neta = total_ganancia_bruta - datos_mes["total_nomina"]
+        reporte_meses.append({
             "mes": mes,
-            "ventas": ventas,
-            "nomina_pagada": nomina_pagada,
-            "ganancia": ganancia,
+            "dias": datos_mes["dias"],
+            "total_ventas": datos_mes["total_ventas"],
+            "total_compras": datos_mes["total_compras"],
+            "total_ganancia_bruta": total_ganancia_bruta,
+            "total_nomina": datos_mes["total_nomina"],
+            "corte_ganancia_neta": corte_ganancia_neta,
         })
 
-    return render_template("reportes.html", meses=meses, nomina_fija_mensual=nomina_fija_mensual)
+    return render_template("reportes.html", meses=reporte_meses, nomina_fija_mensual=nomina_fija_mensual)
 
 
 if __name__ == "__main__":

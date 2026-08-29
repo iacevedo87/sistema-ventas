@@ -4,37 +4,56 @@
 <a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
 
 <div class="card">
-  <h2>📊 Ventas y ganancia neta por mes</h2>
+  <h2>📊 Ventas, compras y nómina por fecha</h2>
   <p style="color:#6b7280;font-size:0.88rem;">
-    La ganancia neta se calcula restando a las ventas del mes la nómina <strong>pagada y registrada</strong>
-    en ese mismo mes (pantalla de Nómina). Si pagaste salarios pero no los registraste ahí, regístralos
-    para que se reflejen aquí.
+    Cada día se descuentan las <strong>compras a proveedores</strong> de las ventas para obtener la
+    ganancia bruta del día; luego se descuenta aparte la <strong>nómina pagada</strong> ese día para llegar
+    a la ganancia neta — así no se confunde una cosa con la otra. Al final de cada mes hay un
+    <strong>corte mensual</strong> con los totales.
   </p>
-  <p style="color:#6b7280;font-size:0.88rem;">
-    Nómina fija mensual actual (suma de salarios de todos los trabajadores registrados):
+  <p style="color:#6b7280;font-size:0.85rem;">
+    Nómina fija mensual de referencia (suma de salarios de todos los trabajadores):
     <strong style="color:var(--primary);">${{ '%.2f'|format(nomina_fija_mensual) }}</strong>
   </p>
+</div>
 
+{% for m in meses %}
+<div class="card">
+  <h2>{{ m.mes }}</h2>
   <table>
     <thead>
-      <tr><th>Mes</th><th>Ventas totales</th><th>Nómina pagada</th><th>Ganancia neta</th></tr>
+      <tr>
+        <th>Fecha</th><th>Ventas</th><th>Compras</th><th>Ganancia bruta</th>
+        <th>Nómina pagada</th><th>Ganancia neta</th>
+      </tr>
     </thead>
     <tbody>
-      {% for m in meses %}
+      {% for d in m.dias %}
       <tr>
-        <td>{{ m.mes }}</td>
-        <td>${{ '%.2f'|format(m.ventas) }}</td>
-        <td>${{ '%.2f'|format(m.nomina_pagada) }}</td>
+        <td>{{ d.fecha }}</td>
+        <td>${{ '%.2f'|format(d.ventas) }}</td>
+        <td>${{ '%.2f'|format(d.compras) }}</td>
+        <td style="color: {{ '#1f6b2b' if d.ganancia_bruta >= 0 else '#dc2626' }};">${{ '%.2f'|format(d.ganancia_bruta) }}</td>
+        <td>${{ '%.2f'|format(d.nomina) }}</td>
         <td>
-          <strong style="color: {{ '#1f6b2b' if m.ganancia >= 0 else '#dc2626' }};">
-            ${{ '%.2f'|format(m.ganancia) }}
-          </strong>
+          <strong style="color: {{ '#1f6b2b' if d.ganancia_neta >= 0 else '#dc2626' }};">${{ '%.2f'|format(d.ganancia_neta) }}</strong>
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="4" style="color:#6b7280;">Todavía no hay ventas ni pagos de nómina registrados.</td></tr>
       {% endfor %}
+      <tr style="background:var(--primary);">
+        <td style="color:white;font-weight:700;">CORTE DEL MES</td>
+        <td style="color:white;font-weight:700;">${{ '%.2f'|format(m.total_ventas) }}</td>
+        <td style="color:white;font-weight:700;">${{ '%.2f'|format(m.total_compras) }}</td>
+        <td style="color:#c8e6a0;font-weight:700;">${{ '%.2f'|format(m.total_ganancia_bruta) }}</td>
+        <td style="color:white;font-weight:700;">${{ '%.2f'|format(m.total_nomina) }}</td>
+        <td style="color:#c8e6a0;font-weight:800;font-size:1.05rem;">${{ '%.2f'|format(m.corte_ganancia_neta) }}</td>
+      </tr>
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="card">
+  <p style="color:#6b7280;">Todavía no hay ventas, compras ni pagos de nómina registrados.</p>
+</div>
+{% endfor %}
 {% endblock %}
