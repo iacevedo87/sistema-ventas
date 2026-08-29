@@ -420,25 +420,39 @@ def ventas():
         fecha = request.form.get("fecha") or date.today().isoformat()
         productos_ids = request.form.getlist("id_producto[]")
         cantidades = request.form.getlist("cantidad[]")
+        precios_editados = request.form.getlist("precio_unitario[]")
+        try:
+            descuento_pct = float(request.form.get("descuento_porcentaje") or 0)
+        except ValueError:
+            descuento_pct = 0
+        descuento_pct = max(0, min(100, descuento_pct))  # nunca negativo ni mayor a 100%
 
         detalles = []
-        total = 0.0
-        for pid, cant in zip(productos_ids, cantidades):
+        subtotal = 0.0
+        for i, (pid, cant) in enumerate(zip(productos_ids, cantidades)):
             if not pid or not cant:
                 continue
             prod = conn.execute("SELECT precio FROM productos WHERE id_producto=?", (pid,)).fetchone()
             if not prod:
                 continue
             cant = float(cant)
-            subtotal = prod["precio"] * cant
-            total += subtotal
-            detalles.append((pid, cant, prod["precio"]))
+            # Si el usuario ajustó el precio en la pantalla, se respeta ese valor;
+            # si no, se usa el precio actual registrado en Productos.
+            precio_editado = precios_editados[i] if i < len(precios_editados) and precios_editados[i] not in (None, "") else None
+            precio_final = float(precio_editado) if precio_editado is not None else prod["precio"]
+            subtotal += precio_final * cant
+            detalles.append((pid, cant, precio_final))
+
+        monto_descuento = subtotal * (descuento_pct / 100)
+        total = subtotal - monto_descuento
 
         if detalles:
             cur = conn.execute(
-                """INSERT INTO ventas (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha, observaciones)
-                   VALUES (?,?,?,?,?,?,?)""",
-                (id_cliente, id_trabajador, total, estado_pago, metodo_pago, fecha, observaciones))
+                """INSERT INTO ventas (id_cliente, id_trabajador, subtotal, descuento_porcentaje, total,
+                                        estado_pago, metodo_pago, fecha, observaciones)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (id_cliente, id_trabajador, subtotal, descuento_pct, total, estado_pago, metodo_pago,
+                 fecha, observaciones))
             id_venta = cur.lastrowid
             for pid, cant, precio in detalles:
                 conn.execute("""INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario)

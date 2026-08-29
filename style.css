@@ -178,6 +178,15 @@ tr:hover { background: #f9fafb; }
 .venta-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
 .venta-row select { flex: 3; }
 .venta-row input { flex: 1; }
+.venta-row-header {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.venta-row-header span:nth-child(1) { flex: 3; }
+.venta-row-header span:nth-child(2),
+.venta-row-header span:nth-child(3) { flex: 1; }
 .remove-row { background: var(--danger); color: white; border: none; border-radius: 6px; padding: 8px 10px; cursor: pointer; }
 
 .detalle-list { margin: 0; padding-left: 18px; font-size: 0.85rem; color: var(--muted); }

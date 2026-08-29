@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Volver al inicio</a>
+
+<div class="card">
+  <h2>Nueva venta</h2>
+  <form method="POST" action="{{ url_for('ventas') }}" id="venta-form">
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div>
+        <label>Fecha de la venta</label>
+        <input type="date" name="fecha" value="{{ hoy }}">
+      </div>
+      <div>
+        <label>Cliente</label>
+        <select name="id_cliente">
+          <option value="">-- Sin cliente --</option>
+          {% for c in clientes %}
+          <option value="{{ c.id_cliente }}">{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Vendedor (trabajador)</label>
+        <select name="id_trabajador">
+          <option value="">-- Sin asignar --</option>
+          {% for t in trabajadores %}
+          <option value="{{ t.id_trabajador }}">{{ t.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Estado de pago</label>
+        <select name="estado_pago">
+          <option value="Paid">Paid</option>
+          <option value="Partial">Partial</option>
+          <option value="Pending">Pending</option>
+          <option value="Overdue">Overdue</option>
+          <option value="Refunded">Refunded</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Insurance Pending">Insurance Pending</option>
+        </select>
+      </div>
+      <div>
+        <label>Método de pago</label>
+        <select name="metodo_pago">
+          <option value="">-- Sin especificar --</option>
+          <option value="Cash">Cash</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="Card">Card</option>
+          <option value="Check">Check</option>
+          <option value="PayPal">PayPal</option>
+          <option value="Venmo">Venmo</option>
+          <option value="CashApp">CashApp</option>
+          <option value="Insurance">Insurance</option>
+          <option value="Financing">Financing</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>Observaciones</label>
+        <textarea name="observaciones" rows="2" placeholder="Cualquier dato adicional sobre esta venta..."></textarea>
+      </div>
+    </div>
+
+    <label>Productos</label>
+    <div id="productos-header" style="display:none;">
+      <div class="venta-row venta-row-header">
+        <span>Producto</span><span>Cantidad</span><span>Precio unit.</span><span></span>
+      </div>
+    </div>
+    <div id="productos-container"></div>
+    <button type="button" class="btn btn-secondary" onclick="agregarFila()">+ Agregar producto</button>
+
+    <div class="resumen-cards" style="margin-top:16px;max-width:420px;margin-left:auto;">
+      <div class="stat">
+        <div class="label">Subtotal</div>
+        <div class="value">$<span id="subtotal-estimado">0.00</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Descuento (%)</div>
+        <input type="number" name="descuento_porcentaje" id="input-descuento" min="0" max="100" step="0.1"
+               value="0" oninput="calcularTotal()" style="font-size:1.1rem;font-weight:700;border:none;padding:0;">
+      </div>
+      <div class="stat" style="background:var(--primary);border-color:var(--primary);">
+        <div class="label" style="color:#c8e6a0;">Total final</div>
+        <div class="value" style="color:white;">$<span id="total-estimado">0.00</span></div>
+      </div>
+    </div>
+
+    <button type="submit" style="margin-top:14px;">Registrar venta</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Historial de ventas</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Productos</th><th>Subtotal</th><th>Desc. %</th><th>Total</th><th>Estado</th><th>Método</th><th>Observaciones</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for v in ventas %}
+      <tr>
+        <td>{{ v.id_venta }}</td>
+        <td>{{ v.fecha }}</td>
+        <td>{{ v.cliente_nombre or '-' }}</td>
+        <td>{{ v.trabajador_nombre or '-' }}</td>
+        <td>
+          <ul class="detalle-list">
+            {% for d in detalles[v.id_venta] %}
+            <li>{{ d.producto_nombre }} x{{ d.cantidad }} (${{ '%.2f'|format(d.precio_unitario) }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+        <td>${{ '%.2f'|format(v.subtotal or v.total) }}</td>
+        <td>{{ '%.1f'|format(v.descuento_porcentaje or 0) }}%</td>
+        <td><strong>${{ '%.2f'|format(v.total) }}</strong></td>
+        <td>
+          {% set colores = {'Paid': '#1f6b2b', 'Partial': '#b45309', 'Pending': '#dc2626'} %}
+          <span class="badge" style="background:transparent;border:1px solid {{ colores.get(v.estado_pago, '#6b7280') }};color:{{ colores.get(v.estado_pago, '#6b7280') }};">{{ v.estado_pago or 'Paid' }}</span>
+        </td>
+        <td>{{ v.metodo_pago or '-' }}</td>
+        <td>{{ v.observaciones or '-' }}</td>
+        <td class="actions">
+          <form method="POST" action="{{ url_for('delete_venta', id_venta=v.id_venta) }}"
+                onsubmit="return confirm('¿Eliminar esta venta?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="12" style="color:#6b7280;">No hay ventas registradas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const productos = [
+  {% for p in productos %}
+  { id: {{ p.id_producto }}, nombre: {{ p.nombre|tojson }}, precio: {{ p.precio }}, stock: {{ p.stock }} },
+  {% endfor %}
+];
+
+function agregarFila() {
+  document.getElementById('productos-header').style.display = 'block';
+  const container = document.getElementById('productos-container');
+  const row = document.createElement('div');
+  row.className = 'venta-row';
+
+  let options = '<option value="">-- Selecciona producto --</option>';
+  productos.forEach(p => {
+    options += `<option value="${p.id}" data-precio="${p.precio}">${p.nombre} (stock: ${p.stock})</option>`;
+  });
+
+  row.innerHTML = `
+    <select name="id_producto[]" onchange="precargarPrecio(this); calcularTotal();">${options}</select>
+    <input type="number" name="cantidad[]" min="1" value="1" onchange="calcularTotal()" oninput="calcularTotal()">
+    <input type="number" name="precio_unitario[]" min="0" step="0.01" value="0" onchange="calcularTotal()" oninput="calcularTotal()"
+           title="Precio ajustable — puedes cambiarlo si esta venta lleva un precio distinto al de catálogo">
+    <button type="button" class="remove-row" onclick="this.parentElement.remove(); calcularTotal();">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function precargarPrecio(select) {
+  const row = select.closest('.venta-row');
+  const opt = select.options[select.selectedIndex];
+  const precio = opt ? parseFloat(opt.getAttribute('data-precio')) || 0 : 0;
+  row.querySelector('input[name="precio_unitario[]"]').value = precio.toFixed(2);
+}
+
+function calcularTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('#productos-container .venta-row').forEach(row => {
+    const cantidad = parseFloat(row.querySelector('input[name="cantidad[]"]').value) || 0;
+    const precio = parseFloat(row.querySelector('input[name="precio_unitario[]"]').value) || 0;
+    subtotal += precio * cantidad;
+  });
+  const descuentoPct = Math.max(0, Math.min(100, parseFloat(document.getElementById('input-descuento').value) || 0));
+  const total = subtotal - (subtotal * descuentoPct / 100);
+  document.getElementById('subtotal-estimado').textContent = subtotal.toFixed(2);
+  document.getElementById('total-estimado').textContent = total.toFixed(2);
+}
+
+// arrancar con una fila
+agregarFila();
+</script>
+{% endblock %}

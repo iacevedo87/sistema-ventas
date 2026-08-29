@@ -74,14 +74,16 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 CREATE TABLE IF NOT EXISTS ventas (
-    id_venta        INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_cliente      INTEGER,
-    id_trabajador   INTEGER,
-    fecha           TEXT DEFAULT (date('now')),
-    total           REAL DEFAULT 0,
-    estado_pago     TEXT DEFAULT 'Paid',
-    metodo_pago     TEXT,
-    observaciones   TEXT,
+    id_venta            INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_cliente          INTEGER,
+    id_trabajador       INTEGER,
+    fecha               TEXT DEFAULT (date('now')),
+    subtotal            REAL DEFAULT 0,
+    descuento_porcentaje REAL DEFAULT 0,
+    total               REAL DEFAULT 0,
+    estado_pago         TEXT DEFAULT 'Paid',
+    metodo_pago         TEXT,
+    observaciones       TEXT,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id_trabajador) ON DELETE SET NULL
 );
@@ -146,6 +148,8 @@ MIGRACIONES = [
     ("ventas", "estado_pago", "TEXT DEFAULT 'Paid'"),
     ("ventas", "metodo_pago", "TEXT"),
     ("ventas", "observaciones", "TEXT"),
+    ("ventas", "subtotal", "REAL DEFAULT 0"),
+    ("ventas", "descuento_porcentaje", "REAL DEFAULT 0"),
     ("clientes", "numero_record", "INTEGER"),
 ]
 
