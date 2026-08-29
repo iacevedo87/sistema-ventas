@@ -7,6 +7,11 @@ import os
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "cambia-esta-clave-en-produccion")
 
+# La sesión NO es permanente: la cookie de sesión no lleva fecha de expiración,
+# así que el navegador la borra al cerrarse por completo (no solo al cerrar la pestaña).
+# Al volver a abrir el navegador, la app pedirá usuario y clave de nuevo.
+app.config["SESSION_PERMANENT"] = False
+
 init_db()
 
 # Rutas que NO requieren haber iniciado sesión
@@ -31,6 +36,7 @@ def login():
         user = conn.execute("SELECT * FROM usuarios WHERE username=?", (username,)).fetchone()
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
+            session.permanent = False
             session["usuario"] = user["username"]
             session["rol"] = user["rol"]
             return redirect(url_for("index"))
