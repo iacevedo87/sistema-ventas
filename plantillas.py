@@ -405,3 +405,124 @@ def generar_promocion(titulo="WEIGHT LOSS PROGRAM", items=None, telefono="786-53
     c.save()
     buf.seek(0)
     return buf
+
+
+# ---------------------------------------------------------------
+# 6. INVOICE — factura formal de una venta específica
+# ---------------------------------------------------------------
+def generar_invoice(id_venta, fecha="", paciente="", numero_record=None, vendedor="",
+                     items=None, subtotal=0, descuento_porcentaje=0, total=0,
+                     estado_pago="", metodo_pago="", observaciones=""):
+    """items: lista de dicts con nombre, cantidad, precio_unitario, subtotal_linea"""
+    if items is None:
+        items = []
+    buf = io.BytesIO()
+    W, H = letter
+    c = canvas.Canvas(buf, pagesize=(W, H))
+    y = _membrete(c, W, H)
+    ancho_texto = W - 2 * MARGIN
+
+    numero_invoice = f"INV-{int(id_venta):06d}"
+
+    c.setFont("Helvetica-Bold", 18)
+    c.setFillColor(NAVY)
+    c.drawString(MARGIN, y, "INVOICE")
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(GREEN)
+    c.drawRightString(W - MARGIN, y, numero_invoice)
+    y -= 0.3 * inch
+
+    c.setFont("Helvetica", 10)
+    c.setFillColor(GRAY)
+    c.drawString(MARGIN, y, f"Fecha: {_fecha_formato_largo(fecha) if fecha else '-'}")
+    c.drawRightString(W - MARGIN, y, f"Estado: {estado_pago or 'Paid'}")
+    y -= 0.3 * inch
+
+    # Bloque "Facturado a"
+    c.setFillColor(NAVY)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(MARGIN, y, "FACTURADO A:")
+    y -= 0.2 * inch
+    c.setFont("Helvetica", 11)
+    c.drawString(MARGIN, y, paciente or "Cliente general")
+    if numero_record:
+        c.setFont("Helvetica", 9)
+        c.setFillColor(GRAY)
+        c.drawString(MARGIN, y - 0.18 * inch, f"Récord #{numero_record}")
+        y -= 0.18 * inch
+    if vendedor:
+        c.setFont("Helvetica", 9)
+        c.setFillColor(GRAY)
+        c.drawRightString(W - MARGIN, y, f"Atendido por: {vendedor}")
+    y -= 0.35 * inch
+
+    # Tabla de items
+    col_x = [MARGIN, MARGIN + 3.2 * inch, MARGIN + 4.3 * inch, MARGIN + 5.6 * inch]
+    header_h = 0.3 * inch
+    c.setFillColor(NAVY)
+    c.roundRect(MARGIN, y - header_h, ancho_texto, header_h, 4, fill=1, stroke=0)
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica-Bold", 9.5)
+    c.drawString(col_x[0] + 8, y - header_h + 10, "PRODUCTO")
+    c.drawString(col_x[1], y - header_h + 10, "CANT.")
+    c.drawString(col_x[2], y - header_h + 10, "PRECIO UNIT.")
+    c.drawRightString(W - MARGIN - 8, y - header_h + 10, "SUBTOTAL")
+    y -= header_h
+
+    row_h = 0.28 * inch
+    for idx, item in enumerate(items):
+        if idx % 2 == 1:
+            c.setFillColor(GREEN_LIGHT)
+            c.rect(MARGIN, y - row_h, ancho_texto, row_h, fill=1, stroke=0)
+        c.setFillColor(NAVY)
+        c.setFont("Helvetica", 9.5)
+        nombre_corto = item["nombre"] if len(item["nombre"]) <= 42 else item["nombre"][:39] + "..."
+        c.drawString(col_x[0] + 8, y - row_h + 9, nombre_corto)
+        c.drawString(col_x[1], y - row_h + 9, str(item["cantidad"]))
+        c.drawString(col_x[2], y - row_h + 9, f"${item['precio_unitario']:.2f}")
+        c.drawRightString(W - MARGIN - 8, y - row_h + 9, f"${item['subtotal_linea']:.2f}")
+        y -= row_h
+
+    c.setStrokeColor(LIGHT_BORDER)
+    c.setLineWidth(0.8)
+    c.line(MARGIN, y, W - MARGIN, y)
+    y -= 0.3 * inch
+
+    # Totales (alineados a la derecha)
+    monto_descuento = subtotal * (descuento_porcentaje / 100) if descuento_porcentaje else 0
+    totales = [("Subtotal", f"${subtotal:.2f}")]
+    if descuento_porcentaje:
+        totales.append((f"Descuento ({descuento_porcentaje:.1f}%)", f"-${monto_descuento:.2f}"))
+    for etiqueta, valor in totales:
+        c.setFont("Helvetica", 10.5)
+        c.setFillColor(GRAY)
+        c.drawString(W - MARGIN - 2.6 * inch, y, etiqueta)
+        c.drawRightString(W - MARGIN, y, valor)
+        y -= 0.24 * inch
+
+    y -= 0.05 * inch
+    c.setFillColor(NAVY)
+    c.rect(W - MARGIN - 2.6 * inch, y - 0.32 * inch, 2.6 * inch, 0.32 * inch, fill=1, stroke=0)
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(W - MARGIN - 2.6 * inch + 10, y - 0.22 * inch, "TOTAL")
+    c.drawRightString(W - MARGIN - 10, y - 0.22 * inch, f"${total:.2f}")
+    y -= 0.55 * inch
+
+    if metodo_pago:
+        c.setFont("Helvetica", 9.5)
+        c.setFillColor(GRAY)
+        c.drawString(MARGIN, y, f"Método de pago: {metodo_pago}")
+        y -= 0.2 * inch
+    if observaciones:
+        c.setFont("Helvetica-Oblique", 9)
+        c.setFillColor(GRAY)
+        for linea in _wrap_text(c, f"Notas: {observaciones}", "Helvetica-Oblique", 9, ancho_texto):
+            c.drawString(MARGIN, y, linea)
+            y -= 0.16 * inch
+
+    _pie_pagina(c, W)
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf

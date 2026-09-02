@@ -123,6 +123,7 @@
         <td>{{ v.metodo_pago or '-' }}</td>
         <td>{{ v.observaciones or '-' }}</td>
         <td class="actions">
+          <a class="btn" href="{{ url_for('descargar_invoice', id_venta=v.id_venta) }}">📄 Invoice</a>
           <form method="POST" action="{{ url_for('delete_venta', id_venta=v.id_venta) }}"
                 onsubmit="return confirm('¿Eliminar esta venta?');">
             <button type="submit" class="btn-danger">Eliminar</button>

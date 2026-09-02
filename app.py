@@ -902,6 +902,82 @@ def reporte_gastos_ganancias():
                            desde=desde, hasta=hasta)
 
 
+# ---------- REPORTE 7: INVOICES ----------
+@app.route("/reportes/invoices")
+def reporte_invoices():
+    conn = get_connection()
+    desde, hasta = _rango_fechas()
+    id_cliente_filtro = request.args.get("id_cliente") or ""
+
+    condiciones, params = _filtro_fecha_sql("v.fecha", desde, hasta)
+    if id_cliente_filtro:
+        condiciones.append("v.id_cliente = ?")
+        params.append(id_cliente_filtro)
+    where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+    rows = conn.execute(f"""
+        SELECT v.*, c.nombre AS cliente_nombre, c.numero_record, t.nombre AS trabajador_nombre
+        FROM ventas v
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+        LEFT JOIN trabajadores t ON v.id_trabajador = t.id_trabajador
+        {where}
+        ORDER BY v.fecha DESC, v.id_venta DESC
+    """, params).fetchall()
+
+    clientes_list = conn.execute("SELECT * FROM clientes ORDER BY nombre").fetchall()
+    conn.close()
+    total_facturado = sum(r["total"] for r in rows)
+    return render_template("reporte_invoices.html", rows=rows, clientes=clientes_list,
+                           desde=desde, hasta=hasta, id_cliente_filtro=id_cliente_filtro,
+                           total_facturado=total_facturado)
+
+
+@app.route("/ventas/<int:id_venta>/invoice")
+def descargar_invoice(id_venta):
+    conn = get_connection()
+    venta = conn.execute("""
+        SELECT v.*, c.nombre AS cliente_nombre, c.numero_record, t.nombre AS trabajador_nombre
+        FROM ventas v
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+        LEFT JOIN trabajadores t ON v.id_trabajador = t.id_trabajador
+        WHERE v.id_venta = ?
+    """, (id_venta,)).fetchone()
+    if not venta:
+        conn.close()
+        return redirect(url_for("reporte_invoices"))
+
+    detalle_rows = conn.execute("""
+        SELECT d.*, p.nombre AS producto_nombre FROM detalle_ventas d
+        JOIN productos p ON d.id_producto = p.id_producto
+        WHERE d.id_venta = ?
+    """, (id_venta,)).fetchall()
+    conn.close()
+
+    items = [{
+        "nombre": d["producto_nombre"],
+        "cantidad": d["cantidad"],
+        "precio_unitario": d["precio_unitario"],
+        "subtotal_linea": d["cantidad"] * d["precio_unitario"],
+    } for d in detalle_rows]
+
+    buf = plantillas.generar_invoice(
+        id_venta=venta["id_venta"],
+        fecha=venta["fecha"],
+        paciente=venta["cliente_nombre"],
+        numero_record=venta["numero_record"],
+        vendedor=venta["trabajador_nombre"],
+        items=items,
+        subtotal=venta["subtotal"] or venta["total"],
+        descuento_porcentaje=venta["descuento_porcentaje"] or 0,
+        total=venta["total"],
+        estado_pago=venta["estado_pago"],
+        metodo_pago=venta["metodo_pago"],
+        observaciones=venta["observaciones"],
+    )
+    return send_file(buf, mimetype="application/pdf", as_attachment=True,
+                      download_name=f"invoice_{id_venta:06d}.pdf")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
