@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_connection, init_db
 import plantillas
 import os
+import sqlite3
 from datetime import date
 
 app = Flask(__name__)
@@ -116,7 +117,13 @@ def delete_cliente(id_cliente):
 
 
 # ---------- DOCUMENTOS DEL EXPEDIENTE DEL PACIENTE ----------
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", "clientes")
+# Igual que con la base de datos: si hay un disco persistente montado (variable PERSISTENT_DATA_DIR),
+# los documentos de pacientes se guardan ahí para que no se pierdan con cada reinicio.
+_PERSISTENT_DIR = os.environ.get("PERSISTENT_DATA_DIR")
+if _PERSISTENT_DIR:
+    UPLOAD_FOLDER = os.path.join(_PERSISTENT_DIR, "uploads", "clientes")
+else:
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", "clientes")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -373,19 +380,24 @@ def usuarios():
         rol = request.form.get("rol") or "empleado"
         id_trabajador = request.form.get("id_trabajador") or None
         password = request.form.get("password")
-        if edit_id:
-            if password:
-                conn.execute("""UPDATE usuarios SET username=?, password_hash=?, rol=?, id_trabajador=?
-                                 WHERE id_usuario=?""",
-                             (username, generate_password_hash(password), rol, id_trabajador, edit_id))
+        try:
+            if edit_id:
+                if password:
+                    conn.execute("""UPDATE usuarios SET username=?, password_hash=?, rol=?, id_trabajador=?
+                                     WHERE id_usuario=?""",
+                                 (username, generate_password_hash(password), rol, id_trabajador, edit_id))
+                else:
+                    conn.execute("UPDATE usuarios SET username=?, rol=?, id_trabajador=? WHERE id_usuario=?",
+                                 (username, rol, id_trabajador, edit_id))
             else:
-                conn.execute("UPDATE usuarios SET username=?, rol=?, id_trabajador=? WHERE id_usuario=?",
-                             (username, rol, id_trabajador, edit_id))
-        else:
-            conn.execute("""INSERT INTO usuarios (username, password_hash, rol, id_trabajador)
-                             VALUES (?,?,?,?)""",
-                         (username, generate_password_hash(password or "changeme123"), rol, id_trabajador))
-        conn.commit()
+                conn.execute("""INSERT INTO usuarios (username, password_hash, rol, id_trabajador)
+                                 VALUES (?,?,?,?)""",
+                             (username, generate_password_hash(password or "changeme123"), rol, id_trabajador))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.close()
+            flash(f'Ya existe un usuario con el nombre "{username}". Elige un nombre de usuario distinto.')
+            return redirect(url_for("usuarios"))
         return redirect(url_for("usuarios"))
     edit_row = None
     if request.args.get("edit"):
