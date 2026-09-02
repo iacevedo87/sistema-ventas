@@ -34,6 +34,13 @@
     </nav>
   </header>
   <main>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="card" style="border-color:#dc2626;background:#fef2f2;color:#991b1b;">
+          {% for m in messages %}<p style="margin:0;">{{ m }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
   <script>
